@@ -1,0 +1,17 @@
+/* Phase 0 stub — bare minimum styling for the deploy smoke-test page.
+   Real visual design belongs to Agent D's Phase 1 equation-builder UI. */
+
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 640px;
+  margin: 4rem auto;
+  padding: 0 1rem;
+  color: #1a1a1a;
+}
+
+pre {
+  background: #f4f4f4;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}

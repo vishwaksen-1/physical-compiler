@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DiffEq Compiler — Deploy Smoke Test</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!--
+    Phase 0 scope only: this page proves the deploy pipeline end-to-end by
+    calling GET /api/health and rendering the raw response. It is NOT the
+    real equation-builder UI (see PROJECT_PLAN.md Phase 1, Agent D) — that
+    comes later and should replace this content, not extend it in place.
+  -->
+  <main>
+    <h1>DiffEq Compiler</h1>
+    <p>Deploy pipeline smoke test — calling <code>/api/health</code>...</p>
+    <pre id="result">(loading)</pre>
+  </main>
+  <script src="builder.js"></script>
+  <script src="viewer.js"></script>
+  <script>
+    fetch("/api/health")
+      .then((res) => res.json())
+      .then((data) => {
+        document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+      })
+      .catch((err) => {
+        document.getElementById("result").textContent = "Error: " + err;
+      });
+  </script>
+</body>
+</html>

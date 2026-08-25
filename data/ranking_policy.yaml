@@ -1,0 +1,6 @@
+ranking_policy_version: "1.0"
+weights:
+  exactness: 0.5
+  feasibility: 0.3
+  simplicity: 0.2
+tie_break: "registry_insertion_order"

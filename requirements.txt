@@ -1,0 +1,9 @@
+# Pinned exact versions — determinism matters (see PROJECT_PLAN.md §1.2).
+# Verify these are still the latest stable releases at implementation time;
+# any bump must be logged in docs/STATUS.md as a contract-adjacent change.
+sympy==1.12
+lark==1.1.9
+pyyaml==6.0.1
+fastapi==0.109.0
+uvicorn==0.27.0     # local dev server only, not required by Vercel itself
+pytest==8.0.0
