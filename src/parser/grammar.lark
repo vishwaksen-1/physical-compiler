@@ -1,0 +1,73 @@
+// Advanced-mode text grammar for differential equations.
+// Owner: Agent C. See INTERFACE_CONTRACTS.md §1 (EquationSpec) and §8
+// (parse_equation). Handles ASCII derivative notations (x'', dx/dt,
+// d2x/dt2) plus the "custom_expr" fallback for anything else. Unicode
+// derivative notations (ẍ, ∂²u/∂x²) are normalized to their ASCII
+// equivalents by src/parser/preprocess.py *before* this grammar ever
+// sees the text, so this file only needs to know the ASCII forms.
+//
+// Implicit multiplication is deliberately narrow: only "NUMBER power"
+// (2x, 3sin(t), 2(x+1), 2x^2) is allowed, not general juxtaposition
+// (e.g. "x y" is a syntax error, not x*y). This keeps the grammar
+// unambiguous without needing whitespace-sensitivity: a NUMBER can only
+// ever be followed by another atom/power if that's implicit
+// multiplication, so there's no derivation that also matches any other
+// way once you commit to consuming that next token.
+
+start: equation
+
+equation: expr "=" expr
+
+?expr: expr "+" term        -> add
+     | expr "-" term        -> sub
+     | term
+
+?term: term "*" signed      -> mul
+     | term "/" signed      -> div
+     | signed
+
+?signed: "-" signed         -> neg
+       | "+" signed
+       | coeff_power
+
+?coeff_power: NUMBER power  -> mul_implicit
+            | power
+
+?power: atom "^" signed     -> pow
+      | atom "**" signed    -> pow
+      | atom
+
+?atom: NUMBER                   -> number
+     | DERIV_ODE                -> deriv_ode
+     | DERIV_PDE                -> deriv_pde
+     | PRIME_DERIV               -> prime_deriv
+     | FUNC_NAME "(" arglist ")" -> func_call
+     | NAME "(" arglist ")"      -> func_call
+     | NAME                      -> var
+     | "(" expr ")"
+
+arglist: expr ("," expr)*
+
+FUNC_NAME.3: "sin" | "cos" | "step" | "impulse"
+
+// Leibniz ODE notation: d2x/dt2, dx/dt, dy/dx ...
+// (order digits are optional on either side; text_parser.py's
+// _DERIV_ODE_RE pulls the pieces back apart post-lex)
+DERIV_ODE.4: /d\d*[A-Za-z_][A-Za-z_0-9]*\/d[A-Za-z_][A-Za-z_0-9]*\d*/
+
+// Leibniz PDE notation, literal '∂' (U+2202) — reaches this grammar
+// either typed directly or surviving preprocess.py's superscript-digit
+// normalization (∂²u/∂x² -> ∂2u/∂x2).
+DERIV_PDE.4: /\u2202\d*[A-Za-z_][A-Za-z_0-9]*\/\u2202[A-Za-z_][A-Za-z_0-9]*\d*/
+
+// Prime notation: x', x'' (one or more trailing primes on a bare name).
+// Its independent variable isn't named in the text itself; text_parser.py
+// resolves `wrt` for these once the equation's independent variable is
+// known (see _resolve_prime_wrt).
+PRIME_DERIV.3: /[A-Za-z_][A-Za-z_0-9]*'+/
+
+NAME: /[A-Za-z_][A-Za-z_0-9]*/
+NUMBER: /\d+(\.\d+)?/
+
+%import common.WS
+%ignore WS

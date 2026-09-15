@@ -1,17 +1,93 @@
-/* Phase 0 stub — bare minimum styling for the deploy smoke-test page.
-   Real visual design belongs to Agent D's Phase 1 equation-builder UI. */
-
+/* Reset & base */
+* { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: system-ui, sans-serif;
-  max-width: 640px;
-  margin: 4rem auto;
-  padding: 0 1rem;
-  color: #1a1a1a;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f8f9fa;
+  color: #212529;
+  line-height: 1.5;
+  padding: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-pre {
-  background: #f4f4f4;
+header { margin-bottom: 2rem; }
+header h1 { font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; }
+header p { color: #495057; }
+
+section { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+
+h2 { font-size: 1.25rem; font-weight: 500; margin-bottom: 1rem; }
+h4 { font-weight: 500; margin: 0.75rem 0 0.25rem; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+.field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #495057;
+}
+.field input, .field select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: white;
+  max-width: 200px;
+}
+.field input[type="number"] { max-width: 120px; }
+
+.field-group {
+  border-top: 1px solid #e9ecef;
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+.field-group .field { margin-bottom: 0.5rem; }
+
+#coefficients-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+button {
+  background: #0d6efd;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+button:hover { background: #0b5ed7; }
+
+#results-content { margin-top: 1rem; }
+#results-content pre {
+  background: #f1f3f5;
   padding: 1rem;
   border-radius: 6px;
   overflow-x: auto;
+  font-size: 0.875rem;
 }
+
+.description-text {
+  background: #e9ecef;
+  padding: 1rem;
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+
+.toggle-btn {
+  background: #6c757d;
+  margin-right: 0.5rem;
+}
+.toggle-btn:hover { background: #5a6268; }
+
+.hidden { display: none; }
+
+#forcing-params .field { max-width: 200px; }

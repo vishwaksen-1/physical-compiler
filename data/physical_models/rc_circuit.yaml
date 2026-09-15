@@ -1,0 +1,74 @@
+model_id: rc_circuit
+display_name: Simple RC Circuit
+domain: electrical
+
+equation_class_tags:
+  - first_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - first_order_linear_constant_coefficient_ode
+
+state_variables:
+  Vc: voltage across the capacitor (V)
+
+parameter_map:
+  R: series resistance (Ohm)
+  C: capacitance (F)
+
+parameter_constraints:
+  R:
+    min: 1.0
+    max: 1000000.0
+    unit: Ohm
+  C:
+    min: 1.0e-9
+    max: 0.001
+    unit: F
+    notes: 1 nF-1 mF covers common ceramic/electrolytic capacitors
+
+dimensional_constraints:
+  R: "[M][L]^2[I]^-2[T]^-3"
+  C: "[M]^-1[L]^-2[I]^2[T]^4"
+  Vc: "[M][L]^2[I]^-1[T]^-3"
+  homogeneity_check: "R*C*Vc' + Vc and V_in(t) must both reduce to volts"
+
+measurable_variables:
+  - Vc
+  - i
+
+controllable_variables:
+  - V_in
+  - Vc0
+
+construction_requirements:
+  components:
+    - resistor, measured R
+    - capacitor, measured C
+    - function generator for V_in(t) (step or square wave for transient response)
+    - oscilloscope or DAQ across the capacitor
+  estimated_build_time_hours: 0.5
+  estimated_cost_usd: 15
+  notes: >
+    One of the simplest builds in the registry; useful as a fast sanity
+    check of the whole pipeline (parse -> canonicalize -> map -> verify).
+
+approximation_model:
+  type: none
+  assumptions:
+    - ideal linear resistor
+    - ideal capacitor (negligible ESR and leakage)
+    - source impedance of the driving function generator is negligible vs R
+
+error_model:
+  sources:
+    - capacitor leakage current, especially for electrolytic types
+    - source/probe loading changing the effective R and C seen by the circuit
+    - component tolerance (R and C nominal vs measured values)
+  expected_relative_error_pct: 3.0
+
+safety_notes:
+  - observe capacitor voltage rating; do not exceed it during step tests
+  - discharge electrolytic capacitors before handling if driven above ~24V
+
+alt_realizations_of: first_order_linear_constant_coefficient_ode

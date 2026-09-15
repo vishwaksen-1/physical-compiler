@@ -1,0 +1,90 @@
+model_id: series_rlc
+display_name: Series RLC Circuit
+domain: electrical
+
+equation_class_tags:
+  - second_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - second_order_linear_constant_coefficient_ode
+
+state_variables:
+  q: capacitor charge (C)
+  i: loop current, i = dq/dt (A)
+
+parameter_map:
+  L: inductance (H)
+  R: series resistance (Ohm)
+  C: capacitance (F)
+
+parameter_constraints:
+  L:
+    min: 0.001
+    max: 1.0
+    unit: H
+    notes: 1 mH-1 H covers common breadboard-safe inductors
+  R:
+    min: 0.1
+    max: 1000.0
+    unit: Ohm
+  C:
+    min: 1.0e-9
+    max: 0.001
+    unit: F
+    notes: 1 nF-1 mF covers common ceramic/electrolytic capacitors
+
+dimensional_constraints:
+  L: "[M][L]^2[I]^-2[T]^-2"
+  R: "[M][L]^2[I]^-2[T]^-3"
+  C: "[M]^-1[L]^-2[I]^2[T]^4"
+  q: "[I][T]"
+  V: "[M][L]^2[I]^-1[T]^-3"
+  homogeneity_check: "L*q'' + R*q' + q/C and V(t) must both reduce to volts"
+
+measurable_variables:
+  - i
+  - q
+  - V_capacitor
+  - V_resistor
+
+controllable_variables:
+  - V
+  - q0
+  - i0
+
+construction_requirements:
+  components:
+    - through-hole inductor, measured L (LCR meter recommended)
+    - resistor, measured R (or decade resistance box for sweeping R)
+    - capacitor, measured C
+    - function generator for V(t), or DC step via switch for transient response
+    - oscilloscope or DAQ across R (for current) and across C (for charge/voltage)
+  estimated_build_time_hours: 1
+  estimated_cost_usd: 40
+  notes: >
+    Breadboard construction is fine at audio frequencies; at higher
+    frequencies parasitic capacitance/inductance of the breadboard itself
+    becomes a non-negligible error source (see error_model).
+
+approximation_model:
+  type: none
+  assumptions:
+    - ideal linear inductor (no core saturation, no hysteresis)
+    - ideal linear resistor (no significant temperature-dependent drift)
+    - ideal capacitor (no dielectric absorption, negligible ESR)
+    - lead/trace inductance and inter-component parasitic capacitance ignored
+
+error_model:
+  sources:
+    - parasitic breadboard/lead inductance and capacitance
+    - inductor core losses and winding resistance not separated from R
+    - capacitor ESR and dielectric absorption at high frequency
+  expected_relative_error_pct: 4.0
+
+safety_notes:
+  - discharge capacitors before handling if driven above ~24V
+  - keep inductor drive current within its rated saturation current
+  - use current-limited supplies when sweeping toward underdamped resonance
+
+alt_realizations_of: second_order_linear_constant_coefficient_ode

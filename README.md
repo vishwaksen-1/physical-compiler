@@ -9,8 +9,11 @@ builds against. Session-by-session progress is logged in `docs/STATUS.md`.
 
 - `api/index.py` — a FastAPI app with exactly one route, `GET /api/health`.
 - `web/index.html` — calls `/api/health` and prints the result. Nothing else.
-- `vercel.json` — routes `/api/*` to the Python function, everything else
-  to `web/`.
+- `scripts/sync_static.py` — copies `web/` to Vercel's generated `public/`
+  directory during deploy.
+- `vercel.json` — runs the static sync build command. Vercel's FastAPI
+  routing sends `/api/*` to `api/index.py`; static files are served from
+  generated `public/`.
 - Empty, docstring-only stubs under `src/` for every module in the planned
   architecture, each stating which `INTERFACE_CONTRACTS.md` schema it will
   produce/consume once implemented.

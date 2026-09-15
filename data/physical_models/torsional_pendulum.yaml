@@ -1,0 +1,91 @@
+model_id: torsional_pendulum
+display_name: Damped Torsional Pendulum
+domain: mechanical
+
+equation_class_tags:
+  - second_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - rotational
+  - second_order_linear_constant_coefficient_ode
+
+state_variables:
+  theta: angular displacement about the wire axis (rad)
+  omega: angular velocity, omega = dtheta/dt (rad/s)
+
+parameter_map:
+  I: moment of inertia of the rotating disk about its axis (kg*m^2)
+  b: rotational (viscous) damping coefficient (N*m*s/rad)
+  k_t: torsional stiffness of the suspension wire (N*m/rad)
+
+parameter_constraints:
+  I:
+    min: 0.0001
+    max: 0.05
+    unit: kg*m^2
+    notes: disk radius/mass combos typical of a benchtop torsional pendulum
+  b:
+    min: 0.0
+    max: 0.05
+    unit: N*m*s/rad
+    notes: dominated by air drag on the disk plus wire internal friction
+  k_t:
+    min: 0.001
+    max: 5.0
+    unit: N*m/rad
+    notes: depends on wire material, length, and diameter (torsion constant)
+
+dimensional_constraints:
+  I: "[M][L]^2"
+  b: "[M][L]^2[T]^-1"
+  k_t: "[M][L]^2[T]^-2"
+  theta: "dimensionless (rad)"
+  tau: "[M][L]^2[T]^-2"
+  homogeneity_check: "I*theta'' + b*theta' + k_t*theta and tau(t) must both reduce to N*m"
+
+measurable_variables:
+  - theta
+  - omega
+  - angular_acceleration
+
+controllable_variables:
+  - tau
+  - theta0
+  - omega0
+
+construction_requirements:
+  components:
+    - rigid disk (or disk + adjustable point masses to vary I)
+    - torsion wire of known material/length/diameter (sets k_t)
+    - rotary encoder or optical angle sensor at the disk hub
+    - optional eddy-current or fluid damper to raise b beyond bare-wire levels
+    - rigid clamp/frame to fix the wire's upper end
+  estimated_build_time_hours: 2
+  estimated_cost_usd: 90
+  notes: >
+    Bare-wire damping alone often gives a very small b (near-undamped);
+    an auxiliary damper is usually needed to reach a well-conditioned,
+    clearly-underdamped or critically-damped demonstration regime.
+
+approximation_model:
+  type: linearization
+  assumptions:
+    - wire torque is linear in theta (Hooke's-law torsion, small/moderate twist)
+    - damping torque is linear in angular velocity (viscous, not dry friction)
+    - disk is rigid; no bending modes of the wire are excited
+    - wire mass is negligible compared to disk moment of inertia
+
+error_model:
+  sources:
+    - wire torsional nonlinearity at large twist angles
+    - bearing/pivot friction if a lower guide bearing is used
+    - air currents adding uncontrolled damping variance between trials
+  expected_relative_error_pct: 6.0
+
+safety_notes:
+  - do not twist the wire past its rated elastic limit; it can snap/whip back
+  - keep loose clothing/hair away from a spinning disk during high-amplitude tests
+  - mount the frame securely; a resonant, poorly clamped stand can walk off a table
+
+alt_realizations_of: second_order_linear_constant_coefficient_ode

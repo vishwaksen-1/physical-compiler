@@ -1,0 +1,90 @@
+model_id: mass_spring_damper
+display_name: Mass-Spring-Damper (linear rail)
+domain: mechanical
+
+equation_class_tags:
+  - second_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - second_order_linear_constant_coefficient_ode
+
+state_variables:
+  x: displacement of mass from equilibrium (m)
+  v: velocity of mass (m/s)
+
+parameter_map:
+  m: mass (kg)
+  c: viscous damping coefficient (N*s/m)
+  k: spring constant (N/m)
+
+parameter_constraints:
+  m:
+    min: 0.01
+    max: 5.0
+    unit: kg
+    notes: below ~10 g, off-the-shelf low-friction carts get hard to source
+  c:
+    min: 0.0
+    max: 20.0
+    unit: N*s/m
+    notes: realistic range for air-dashpot or magnetic eddy-current dampers
+  k:
+    min: 1.0
+    max: 2000.0
+    unit: N/m
+    notes: common hobby/lab extension-spring range
+
+dimensional_constraints:
+  m: "[M]"
+  c: "[M][T]^-1"
+  k: "[M][T]^-2"
+  x: "[L]"
+  F: "[M][L][T]^-2"
+  homogeneity_check: "m*x'' + c*x' + k*x and F(t) must both reduce to [M][L][T]^-2"
+
+measurable_variables:
+  - x
+  - v
+  - a
+  - F_applied
+
+controllable_variables:
+  - F
+  - x0
+  - v0
+
+construction_requirements:
+  components:
+    - low-friction linear rail or air track
+    - cart/mass with adjustable mass plates
+    - extension or compression spring, known k (spring-tester-calibrated)
+    - dashpot or eddy-current magnetic damper for c
+    - position sensor (rotary encoder, ultrasonic, or laser displacement)
+  estimated_build_time_hours: 3
+  estimated_cost_usd: 150
+  notes: >
+    An air track minimizes uncontrolled Coulomb friction, which is the
+    dominant source of deviation from the ideal linear-damping assumption.
+
+approximation_model:
+  type: none
+  assumptions:
+    - spring obeys Hooke's law over the operating displacement range
+    - damping force is linear in velocity (viscous, not Coulomb/dry friction)
+    - mass is rigid and moves in one dimension only
+    - no free play/backlash in the rail-cart coupling
+
+error_model:
+  sources:
+    - residual dry/Coulomb friction not captured by the linear damping term
+    - spring nonlinearity near full extension/compression
+    - sensor quantization and sampling-rate-induced velocity noise
+  expected_relative_error_pct: 5.0
+
+safety_notes:
+  - secure the mass/cart to prevent it flying off the rail at resonance
+  - keep hands clear of the spring's full-compression zone
+  - if using an eddy-current damper, be aware of magnet pinch points
+
+alt_realizations_of: second_order_linear_constant_coefficient_ode

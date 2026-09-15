@@ -1,0 +1,73 @@
+model_id: newtons_cooling
+display_name: Newton's Law of Cooling Apparatus
+domain: thermal
+
+equation_class_tags:
+  - first_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - first_order_linear_constant_coefficient_ode
+
+state_variables:
+  T: object temperature (deg C)
+
+parameter_map:
+  k: cooling rate constant, k = h*A / (mass * specific_heat) (1/s)
+
+parameter_constraints:
+  k:
+    min: 0.0001
+    max: 0.05
+    unit: 1/s
+    notes: >
+      Corresponds to time constants (1/k) from ~20s for a small object in
+      forced air to several hours for a larger, well-insulated mass.
+
+dimensional_constraints:
+  k: "[T]^-1"
+  T: "[Theta]"
+  homogeneity_check: "T' + k*T and k*T_env(t) must both reduce to deg C / s"
+
+measurable_variables:
+  - T
+
+controllable_variables:
+  - T_env
+  - T0
+
+construction_requirements:
+  components:
+    - small metal or liquid-filled object with a thermocouple/thermistor probe
+    - environment with settable/measurable ambient temperature (water bath,
+      environmental chamber, or simply room air for a passive-cooling run)
+    - data logger sampling T at a fixed interval
+  estimated_build_time_hours: 1
+  estimated_cost_usd: 60
+  notes: >
+    A metal block in a stirred water bath gives the cleanest lumped-capacitance
+    behavior (spatially uniform T), most closely matching this 1st-order model.
+
+approximation_model:
+  type: linearization
+  assumptions:
+    - lumped-capacitance approximation (object's internal temperature is
+      spatially uniform at every instant, i.e. Biot number << 1)
+    - heat transfer coefficient h and surface area A are constant over the run
+    - convective heat transfer only (radiative losses assumed negligible
+      over the object's temperature range)
+
+error_model:
+  sources:
+    - non-uniform internal temperature for objects with low thermal conductivity
+      or large size (Biot number not actually small)
+    - radiative heat loss becoming non-negligible at higher T - T_env
+    - ambient temperature drift during a long run
+  expected_relative_error_pct: 7.0
+
+safety_notes:
+  - use insulated tongs/gloves when handling a heated test object
+  - do not exceed the thermocouple probe's rated temperature range
+  - if using a water bath, keep electrical logging equipment away from spills
+
+alt_realizations_of: first_order_linear_constant_coefficient_ode
