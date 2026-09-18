@@ -7,3 +7,6 @@ pyyaml==6.0.1
 fastapi==0.109.0
 uvicorn==0.27.0     # local dev server only, not required by Vercel itself
 pytest==8.0.0
+httpx            # test-only (tests/integration's ASGI test client) -- deliberately
+                  # unpinned: doesn't affect compiler determinism, and pinning an
+                  # old version risked missing wheels on newer Python (see docs/STATUS.md)

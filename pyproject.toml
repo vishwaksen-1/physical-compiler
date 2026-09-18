@@ -1,0 +1,35 @@
+[project]
+name = "physical-compiler"
+version = "0.1.0"
+requires-python = ">=3.11"
+# Mirrors requirements.txt's pins exactly (kept in sync manually --
+# requirements.txt also carries test-only deps like pytest/httpx that
+# don't belong in a Vercel Function's runtime bundle, per
+# https://vercel.com/docs/functions/runtimes/python's "only list packages
+# necessary at runtime" guidance).
+#
+# Declared here, not left empty, because of a deploy failure this fixed:
+# adding this [project] table at all is required for Vercel's `uv lock`
+# step to run ("No `project` table found in pyproject.toml" otherwise),
+# but once pyproject.toml exists Vercel may resolve dependencies from it
+# instead of requirements.txt -- leaving this dependency-less risked
+# shipping a function with sympy/lark/pyyaml/fastapi silently missing at
+# runtime. Declaring them in both places removes the ambiguity either way.
+dependencies = [
+    "sympy==1.12",
+    "lark==1.1.9",
+    "pyyaml==6.0.1",
+    "fastapi==0.109.0",
+]
+
+[tool.vercel]
+# Tells Vercel's zero-config FastAPI framework detection where the app
+# lives, since api/index.py isn't one of the auto-scanned default
+# locations (app.py/index.py/server.py/main.py/wsgi.py/asgi.py at the repo
+# root or under src/ or app/ -- see
+# https://vercel.com/docs/frameworks/backend/fastapi). Without this,
+# Vercel falls back to file-based /api routing, under which api/index.py
+# serves only the exact path "/api" and nothing under it -- see the fix
+# note at the top of api/index.py and docs/STATUS.md for the full
+# diagnosis of the {"detail":"Not Found"} bug this fixes.
+entrypoint = "api.index:app"
