@@ -316,3 +316,117 @@ def max_derivative_order(spec: dict) -> int:
     if not spec["terms"]:
         return 0
     return max(t["derivative_order"] for t in spec["terms"])
+
+
+# ---------------------------------------------------------------------------
+# Linear-ODE structural helpers (Phase 2: src/synthesis/, src/verification/)
+#
+# Scope note: these two new PIPELINE modules must still never `import sympy`
+# themselves (PROJECT_PLAN.md §1.1) — but they DO need to combine the Expr
+# objects this adapter hands back using plain arithmetic operators (+ - * /)
+# and equality checks. That's fine: those are operator overloads on an
+# already-opaque return value, not a new sympy call site. What they must NOT
+# do is call a sympy-specific *method* (`.subs()`, `.coeff()`, `.free_symbols`,
+# `.atoms()`, ...) directly — every such access is wrapped below instead.
+# ---------------------------------------------------------------------------
+
+def parse_srepr(text: str) -> sympy.Expr:
+    """Re-parse a canonical_srepr()-produced string (e.g. ir.canonical_form,
+    ir.forcing_term) back into an Expr. Safe with an empty symbol table since
+    canonical_srepr() output is fully-qualified sympy srepr (Symbol(...)/
+    Function(...)(...)/...), as noted in src/classifier/classifier.py."""
+    return safe_sympify(text, {})
+
+
+def split_eq(eq: sympy.Basic) -> tuple[sympy.Expr, sympy.Expr]:
+    """Unpack a `sympy.Eq` (e.g. a PhysicalModel.governing_equation) into
+    (lhs, rhs), so callers never touch `.lhs`/`.rhs` directly."""
+    return eq.lhs, eq.rhs
+
+
+def function_of(name: str, t: sympy.Expr) -> sympy.Expr:
+    """Build an applied undefined function, e.g. function_of("y", t) -> y(t)."""
+    return Function(name)(t)
+
+
+def derivative_of(y_applied: sympy.Expr, t: sympy.Expr, order: int) -> sympy.Expr:
+    """The "atom" for the nth derivative of an applied function y(t): the
+    bare function itself for order 0, else Derivative(y(t), (t, order))."""
+    if order == 0:
+        return y_applied
+    return Derivative(y_applied, (t, order))
+
+
+def coefficient_of(expr: sympy.Expr, atom: sympy.Expr) -> sympy.Expr:
+    """Coefficient of `atom` in `expr`, treating expr as a linear combination
+    of distinct atoms (derivatives of different orders, or the bare
+    function). Safe for exactly this shape — not a general polynomial coeff
+    extractor."""
+    return expr.coeff(atom)
+
+
+def all_derivatives(expr: sympy.Expr) -> set:
+    """All Derivative atoms appearing anywhere in expr."""
+    return expr.atoms(Derivative)
+
+
+def applied_undefined_functions(expr: sympy.Expr) -> set:
+    """All applied-undefined-function atoms in expr, e.g. {F(t)} or
+    {x(t)}. Used to find a model's dependent-variable function and its
+    forcing function."""
+    return expr.atoms(sympy.core.function.AppliedUndef)
+
+
+def derivative_order_of(deriv: sympy.Expr) -> int:
+    return deriv.derivative_count
+
+
+def derivative_base_of(deriv: sympy.Expr) -> sympy.Expr:
+    """The function being differentiated, e.g. x(t) for Derivative(x(t), t, t)."""
+    return deriv.expr
+
+
+def symbol_name(sym: sympy.Expr) -> str:
+    return sym.name
+
+
+def applied_arg0(func_atom: sympy.Expr) -> sympy.Expr:
+    """The (sole) argument of an applied function, e.g. applied_arg0(x(t)) -> t."""
+    return func_atom.args[0]
+
+
+def substitute(expr: sympy.Expr, mapping: dict) -> sympy.Expr:
+    """mapping: {Symbol: python number}. Wraps `.subs()` so callers never
+    call it directly."""
+    return expr.subs(mapping)
+
+
+def has_free_symbols(expr: sympy.Expr) -> bool:
+    return bool(free_symbols(expr))
+
+
+def to_float(expr: sympy.Expr) -> float:
+    """Convert a fully-numeric sympy Expr to a python float. Raises
+    ValueError if free symbols remain (caller substituted incompletely)."""
+    if free_symbols(expr):
+        raise ValueError(f"cannot convert to float, free symbols remain: {free_symbols(expr)!r}")
+    return float(expr)
+
+
+def solve_system(equations: list[sympy.Expr], unknowns: list[sympy.Expr]) -> list[dict]:
+    """Wraps `sympy.solve(equations, unknowns, dict=True)`. Each `equations[i]`
+    is an expression implicitly meaning `expressions[i] == 0` (standard sympy
+    solve() idiom) — build them as `lhs_expr - rhs_expr` at the call site.
+    Returns a list of {symbol: expr} solution dicts (possibly with some
+    `unknowns` absent from a dict, meaning that symbol is left free in that
+    solution branch) — never raises for an empty/no solution, just returns [].
+    """
+    if not equations or not unknowns:
+        return []
+    try:
+        result = sympy.solve(equations, unknowns, dict=True)
+    except NotImplementedError:
+        return []
+    if isinstance(result, dict):
+        return [result]
+    return list(result)

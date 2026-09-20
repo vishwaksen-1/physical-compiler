@@ -1,172 +1,128 @@
-# api/index.py
+"""
+Vercel entrypoint (INTERFACE_CONTRACTS.md §9). Thin HTTP wrapper only —
+request parsing, calling into src/api/, and JSON serialization. No compiler
+logic lives here; see src/api/__init__.py for compile_equation() and
+friends.
+
+DEPLOYMENT FIX (this session): `api/index.py` is not one of Vercel's
+zero-config FastAPI framework-preset entrypoint locations (app.py, index.py,
+server.py, main.py, wsgi.py, asgi.py at the repo root or under src/ or
+app/ — see https://vercel.com/docs/frameworks/backend/fastapi). Without an
+explicitly declared entrypoint, Vercel falls back to file-based Python
+Functions routing, under which a file inside /api serves *only its exact
+path* — api/index.py would serve literally `/api` and nothing else, which
+is why every route defined here beyond that (`/api/health`, `/api/parse`,
+`/api/compile`, `/api/models`) was returning Starlette's default
+`{"detail":"Not Found"}`: the request never reached this app at all.
+Fixed by adding a `pyproject.toml` at the repo root with
+`[tool.vercel] entrypoint = "api.index:app"`, which registers the FastAPI
+framework preset explicitly and hands this app full control of routing
+(and of serving public/, per the same doc). See docs/STATUS.md for the
+full diagnosis.
+
+ARTWORK MOUNTS (later session): `/media/images/*` and `/media/memes/*` are
+mounted below via Starlette's StaticFiles, serving data/images/ and
+data/memes/ directly from this app -- those directories aren't under
+public/, so Vercel's platform-level static CDN never sees them; only this
+app's own routing does. This *should* work under the same "framework
+handles all requests" architecture as everything else here, but -- per
+this file's own history above -- untested against a real Vercel deploy as
+of this session. Verify `<preview-url>/media/images/anything.png` (or
+`/media/memes/...`) actually resolves after deploying, the same way
+docs/STATUS.md already asks for /api/health etc. to be checked for real.
+"""
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
-import json
+from typing import Optional, Dict, Any
 import sys
 import os
 
-# Add src to path so that we can import later (stub doesn't need it yet)
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Repo root on sys.path so `from src...` imports work regardless of how the
+# process was launched (local uvicorn, pytest, or Vercel's runtime).
+_REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, _REPO_ROOT)
 
-app = FastAPI()
+from src.api import COMPILER_VERSION, compile_equation as _compile_equation  # noqa: E402
+from src.parser.text_parser import parse_equation as _parse_equation, EquationParseError  # noqa: E402
+from src.parser.validator import validate_equation_spec  # noqa: E402
+from src.physics.models import registry_summary  # noqa: E402
+
+app = FastAPI(title="DiffEq Compiler API")
+
+# Serves the model-artwork images (src/physics/models/artwork.py) and their
+# meme-placeholder fallbacks. These live in data/, not web/public/, since
+# they're compiler data (like data/physical_models/*.yaml) rather than
+# frontend source -- Vercel's platform-level static serving only covers
+# public/, so this app mounts them itself. Directories are created (even if
+# initially empty, README-only) alongside this change specifically so this
+# mount never fails at import time for a missing directory.
+_IMAGES_DIR = os.path.join(_REPO_ROOT, "data", "images")
+_MEMES_DIR = os.path.join(_REPO_ROOT, "data", "memes")
+if os.path.isdir(_IMAGES_DIR):
+    app.mount("/media/images", StaticFiles(directory=_IMAGES_DIR), name="images")
+if os.path.isdir(_MEMES_DIR):
+    app.mount("/media/memes", StaticFiles(directory=_MEMES_DIR), name="memes")
+
 
 # -------------------- Health --------------------
+
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "compiler_version": "0.0.1"}
+    return {"status": "ok", "compiler_version": COMPILER_VERSION}
 
-# -------------------- Stub: Parse --------------------
+
+# -------------------- Parse --------------------
+
 class ParseRequest(BaseModel):
     raw_text: str
 
-@app.post("/api/parse")
-async def parse_equation(req: ParseRequest):
-    # Return a mock EquationSpec derived from the raw text (for demonstration)
-    # In reality, this would call src.parser.parse_equation
-    mock_spec = {
-        "spec_version": "1.0",
-        "domain_type": "ODE",
-        "independent_vars": ["t"],
-        "dependent_var": "y",
-        "order": 2,
-        "terms": [
-            {"derivative_order": 2, "wrt": ["t"], "coefficient": 1.0},
-            {"derivative_order": 1, "wrt": ["t"], "coefficient": 0.5},
-            {"derivative_order": 0, "wrt": ["t"], "coefficient": 2.0}
-        ],
-        "rhs_forcing": {
-            "type": "sin",
-            "params": {"amplitude": 1.0, "frequency": 1.0, "phase": 0.0},
-            "expr": None
-        },
-        "initial_conditions": {"y": 1.0, "yprime": 0.0},
-        "boundary_conditions": None,
-        "input_source": "text_parser",
-        "raw_text": req.raw_text
-    }
-    return mock_spec
 
-# -------------------- Stub: Compile --------------------
+@app.post("/api/parse")
+async def parse_endpoint(req: ParseRequest):
+    try:
+        spec = _parse_equation(req.raw_text)
+    except EquationParseError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except ImportError as exc:
+        # lark missing from the deployed environment -- a build/config
+        # problem, not a bad request.
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    spec_dict = spec.to_dict()
+    result = validate_equation_spec(spec_dict)
+    if not result.valid:
+        raise HTTPException(status_code=422, detail="; ".join(result.errors))
+    return spec_dict
+
+
+# -------------------- Compile --------------------
+
 class CompileRequest(BaseModel):
     raw_text: Optional[str] = None
     builder_state: Optional[Dict[str, Any]] = None
-    config: Dict[str, Any]
+    config: Dict[str, Any] = {}
+
 
 @app.post("/api/compile")
-async def compile_equation(req: CompileRequest):
-    # Ensure exactly one input is provided
+async def compile_endpoint(req: CompileRequest):
     if (req.raw_text is None) == (req.builder_state is None):
         raise HTTPException(status_code=422, detail="Exactly one of raw_text or builder_state must be provided")
 
-    # Use the input to build a mock response.
-    # If builder_state is present, we can echo its values; otherwise use raw_text.
-    input_spec = None
-    if req.builder_state:
-        input_spec = req.builder_state
-    else:
-        # generate a mock spec from raw_text (simplified)
-        input_spec = {
-            "spec_version": "1.0",
-            "domain_type": "ODE",
-            "independent_vars": ["t"],
-            "dependent_var": "y",
-            "order": 2,
-            "terms": [
-                {"derivative_order": 2, "wrt": ["t"], "coefficient": 1.0},
-                {"derivative_order": 1, "wrt": ["t"], "coefficient": 0.5},
-                {"derivative_order": 0, "wrt": ["t"], "coefficient": 2.0}
-            ],
-            "rhs_forcing": {"type": "sin", "params": {"amplitude": 1.0, "frequency": 1.0, "phase": 0.0}, "expr": None},
-            "initial_conditions": {"y": 1.0, "yprime": 0.0},
-            "boundary_conditions": None,
-            "input_source": "text_parser",
-            "raw_text": req.raw_text
-        }
+    try:
+        output = _compile_equation(req.raw_text, req.builder_state, req.config)
+    except (ValueError, EquationParseError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except ImportError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception as exc:  # pragma: no cover - genuine unexpected server error
+        raise HTTPException(status_code=500, detail=f"internal compiler error: {exc}")
 
-    # Build a full mock ExperimentOutput
-    mock_output = {
-        "compiler_version": "0.0.1",
-        "model_database_version": "0.1.0",
-        "config": req.config,
-        "input_equation_spec": input_spec,
-        "canonical_ir": {
-            "ir_version": "1.0",
-            "canonical_form": "y'' + 0.5*y' + 2*y = sin(t)",
-            "domain_type": "ODE",
-            "order": 2,
-            "linearity": "linear",
-            "homogeneity": "nonhomogeneous",
-            "independent_vars": ["t"],
-            "dependent_var": "y",
-            "coefficients": {"y''": "1.0", "y'": "0.5", "y": "2.0"},
-            "forcing_term": "sin(t)",
-            "classification_tags": ["second_order", "constant_coefficient", "linear"],
-            "equivalence_hash": "abc123",
-            "source_spec_ref": "mock"
-        },
-        "selected_candidate": {
-            "candidate_id": "cand_001",
-            "model_id": "mass_spring_damper",
-            "parameter_values": {"m": 1.0, "c": 0.5, "k": 2.0},
-            "verification_status": "EXACT",
-            "residual_expr": "0.0",
-            "assumptions": ["linear", "small_damping"],
-            "score": {"exactness": 0.95, "feasibility": 0.9, "simplicity": 0.8, "total": 0.92},
-            "transformation_trace": {
-                "original_problem": "y'' + 0.5 y' + 2 y = sin(t)",
-                "transformed_problem": "same",
-                "transformation_type": "direct",
-                "symbolic_derivation_steps": ["Matched coefficients directly"],
-                "equivalence_status": "exact"
-            }
-        },
-        "alternative_candidates": [
-            {
-                "candidate_id": "cand_002",
-                "model_id": "rlc_series",
-                "parameter_values": {"L": 1.0, "R": 0.5, "C": 0.5},
-                "verification_status": "APPROXIMATE",
-                "residual_expr": "0.01*sin(t)",
-                "assumptions": ["linear"],
-                "score": {"exactness": 0.7, "feasibility": 0.8, "simplicity": 0.6, "total": 0.71},
-                "transformation_trace": {
-                    "original_problem": "y'' + 0.5 y' + 2 y = sin(t)",
-                    "transformed_problem": "i'' + (R/L) i' + (1/(LC)) i = (1/L) sin(t)",
-                    "transformation_type": "scaled",
-                    "symbolic_derivation_steps": ["Scaled to electrical domain"],
-                    "equivalence_status": "approximate"
-                }
-            }
-        ],
-        "experiment_description": (
-            "The input differential equation y'' + 0.5 y' + 2 y = sin(t) was matched to a mass-spring-damper system with m=1.0, c=0.5, k=2.0. "
-            "This is an exact match. The system is underdamped and the forcing is sinusoidal. Suggested experiment: apply a sinusoidal force and measure displacement."
-        ),
-        "build_instructions": {
-            "components": ["mass", "spring", "damper", "force actuator", "displacement sensor"],
-            "assembly": "Connect mass to spring and damper in parallel, attach actuator to mass.",
-            "parameters": {"m": 1.0, "c": 0.5, "k": 2.0}
-        },
-        "measurement_plan": {
-            "measurements": [
-                {"variable": "y", "sensor": "displacement sensor", "sampling_rate": 100}
-            ],
-            "conditions": "ambient temperature 25°C"
-        },
-        "warnings": ["None"]
-    }
-    return mock_output
+    return output.to_dict()
 
-# -------------------- Stub: Models --------------------
+
+# -------------------- Models --------------------
+
 @app.get("/api/models")
-async def list_models():
-    return {
-        "models": [
-            {"model_id": "mass_spring_damper", "display_name": "Mass-Spring-Damper", "domain": "mechanical"},
-            {"model_id": "rlc_series", "display_name": "Series RLC Circuit", "domain": "electrical"},
-            {"model_id": "rc_circuit", "display_name": "RC Circuit", "domain": "electrical"},
-            {"model_id": "cooling_law", "display_name": "Newton's Cooling Law", "domain": "thermal"},
-            {"model_id": "torsional_pendulum", "display_name": "Torsional Pendulum", "domain": "mechanical"},
-        ]
-    }
+async def models_endpoint():
+    return {"models": registry_summary()}
