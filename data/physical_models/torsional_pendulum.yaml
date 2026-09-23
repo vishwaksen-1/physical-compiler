@@ -41,6 +41,7 @@ dimensional_constraints:
   b: "[M][L]^2[T]^-1"
   k_t: "[M][L]^2[T]^-2"
   theta: "dimensionless (rad)"
+  omega: "[T]^-1"
   tau: "[M][L]^2[T]^-2"
   homogeneity_check: "I*theta'' + b*theta' + k_t*theta and tau(t) must both reduce to N*m"
 

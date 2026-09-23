@@ -73,6 +73,10 @@ class PhysicalModel:
     )
     safety_notes: list[str] = field(default_factory=list)
     alt_realizations_of: Optional[str] = None
+    # Additive, not in INTERFACE_CONTRACTS.md §3 -- see
+    # src/physics/models/artwork.py's module docstring. Left None at
+    # construction; register_model() fills it in once, at import time.
+    artwork: Optional[dict] = field(default=None)
 
     def to_dict(self) -> dict:
         """JSON-serializable form. `governing_equation` becomes a string.
@@ -107,7 +111,17 @@ def register_model(factory: Callable[[], PhysicalModel]) -> Callable[[], Physica
         @register_model
         def build_mass_spring_damper() -> PhysicalModel:
             return PhysicalModel(...)
+
+    Also resolves and validates this model's illustrative image (see
+    src/physics/models/artwork.py) exactly once here, at "compile-time" in
+    the sense the human asked for -- import time, once per process, not
+    re-checked on every request. A rejected image (wrong aspect ratio,
+    unreadable file) prints a warning immediately, at registration, rather
+    than surfacing silently only when someone happens to compile an
+    equation that matches this model.
     """
+    from src.physics.models.artwork import resolve_artwork
+
     model = factory()
     if not isinstance(model, PhysicalModel):
         raise TypeError(
@@ -116,6 +130,11 @@ def register_model(factory: Callable[[], PhysicalModel]) -> Callable[[], Physica
         )
     if model.model_id in _REGISTRY:
         raise ValueError(f"duplicate model_id: {model.model_id!r}")
+
+    model.artwork = resolve_artwork(model.model_id)
+    if model.artwork["status"] == "rejected":
+        print(f"[registry] image warning for {model.model_id!r}: {model.artwork['reason']}")
+
     _REGISTRY[model.model_id] = model
     _INSERTION_ORDER.append(model.model_id)
     return factory
@@ -132,9 +151,16 @@ def get_model(model_id: str) -> PhysicalModel:
 
 
 def registry_summary() -> list[dict]:
-    """Shape matching the `GET /api/models` response summary list."""
+    """Shape matching the `GET /api/models` response summary list, plus one
+    additive extra key (`artwork`) not in INTERFACE_CONTRACTS.md §9's table
+    -- any consumer reading only the three documented keys is unaffected."""
     return [
-        {"model_id": m.model_id, "display_name": m.display_name, "domain": m.domain}
+        {
+            "model_id": m.model_id,
+            "display_name": m.display_name,
+            "domain": m.domain,
+            "artwork": m.artwork,
+        }
         for m in get_registry()
     ]
 

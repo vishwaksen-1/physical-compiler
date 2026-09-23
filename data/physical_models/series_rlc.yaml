@@ -39,6 +39,7 @@ dimensional_constraints:
   R: "[M][L]^2[I]^-2[T]^-3"
   C: "[M]^-1[L]^-2[I]^2[T]^4"
   q: "[I][T]"
+  i: "[I]"
   V: "[M][L]^2[I]^-1[T]^-3"
   homogeneity_check: "L*q'' + R*q' + q/C and V(t) must both reduce to volts"
 

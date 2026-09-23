@@ -80,7 +80,12 @@ def test_registry_summary_shape():
     summary = registry_summary()
     assert len(summary) == 5
     for entry in summary:
-        assert set(entry.keys()) == {"model_id", "display_name", "domain"}
+        # {"model_id", "display_name", "domain"} is the frozen
+        # INTERFACE_CONTRACTS.md §9 shape; "artwork" is an additive
+        # extension (see src/physics/models/artwork.py) -- any consumer
+        # reading only the three documented keys is unaffected.
+        assert {"model_id", "display_name", "domain"} <= set(entry.keys())
+        assert entry["artwork"]["url"] is not None
 
 
 @pytest.mark.parametrize(

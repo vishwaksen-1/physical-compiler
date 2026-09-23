@@ -40,6 +40,7 @@ dimensional_constraints:
   c: "[M][T]^-1"
   k: "[M][T]^-2"
   x: "[L]"
+  v: "[L][T]^-1"
   F: "[M][L][T]^-2"
   homogeneity_check: "m*x'' + c*x' + k*x and F(t) must both reduce to [M][L][T]^-2"
 
