@@ -1,110 +1,186 @@
 #!/usr/bin/env python3
 # cli/physcompile.py
 """
-Stub CLI for the Physical Compiler.
-Eventually calls src.api.compile_equation directly.
+physcompile — local/dev CLI, calls src/api/ directly (not deployed to
+Vercel; see PROJECT_PLAN.md §2). Same compile_equation() the web API and
+tests call, so this can never drift from what the server actually does.
+
+    $ physcompile "y'' + 2y' + 5y = 0"
+    $ physcompile "y' + 4y = 0" --seed 42
+    $ physcompile "y'' + 2y' + 5y = 0" --json
+    $ physcompile --spec-file my_equation.json
+
+No required flags beyond the equation itself. The previous version of this
+file (found to be a hand-rolled mock returning a hardcoded fake response
+regardless of input, requiring a mandatory `--config '{}'` just to run) is
+gone -- see docs/STATUS.md.
 """
+from __future__ import annotations
+
 import argparse
 import json
 import sys
-from typing import Optional, Dict, Any
+from pathlib import Path
 
-# For mocking, we can reuse the same stub logic from api/index.py but that's not ideal.
-# We'll just print a mock output.
-def mock_compile(raw_text: Optional[str], builder_state: Optional[Dict], config: Dict) -> Dict:
-    # Return a simple mock that echoes input
-    input_spec = None
-    if builder_state:
-        input_spec = builder_state
-    else:
-        input_spec = {
-            "spec_version": "1.0",
-            "domain_type": "ODE",
-            "independent_vars": ["t"],
-            "dependent_var": "y",
-            "order": 2,
-            "terms": [
-                {"derivative_order": 2, "wrt": ["t"], "coefficient": 1.0},
-                {"derivative_order": 1, "wrt": ["t"], "coefficient": 0.5},
-                {"derivative_order": 0, "wrt": ["t"], "coefficient": 2.0}
-            ],
-            "rhs_forcing": {"type": "sin", "params": {"amplitude": 1.0, "frequency": 1.0, "phase": 0.0}, "expr": None},
-            "initial_conditions": {"y": 1.0, "yprime": 0.0},
-            "boundary_conditions": None,
-            "input_source": "text_parser",
-            "raw_text": raw_text
-        }
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO_ROOT))
 
-    return {
-        "compiler_version": "0.0.1",
-        "model_database_version": "0.1.0",
-        "config": config,
-        "input_equation_spec": input_spec,
-        "canonical_ir": {
-            "ir_version": "1.0",
-            "canonical_form": "y'' + 0.5*y' + 2*y = sin(t)",
-            "domain_type": "ODE",
-            "order": 2,
-            "linearity": "linear",
-            "homogeneity": "nonhomogeneous",
-            "independent_vars": ["t"],
-            "dependent_var": "y",
-            "coefficients": {"y''": "1.0", "y'": "0.5", "y": "2.0"},
-            "forcing_term": "sin(t)",
-            "classification_tags": ["second_order", "constant_coefficient", "linear"],
-            "equivalence_hash": "abc123",
-            "source_spec_ref": "cli_mock"
-        },
-        "selected_candidate": {
-            "candidate_id": "cand_001",
-            "model_id": "mass_spring_damper",
-            "parameter_values": {"m": 1.0, "c": 0.5, "k": 2.0},
-            "verification_status": "EXACT",
-            "residual_expr": "0.0",
-            "assumptions": ["linear", "small_damping"],
-            "score": {"exactness": 0.95, "feasibility": 0.9, "simplicity": 0.8, "total": 0.92},
-            "transformation_trace": {
-                "original_problem": "y'' + 0.5 y' + 2 y = sin(t)",
-                "transformed_problem": "same",
-                "transformation_type": "direct",
-                "symbolic_derivation_steps": ["Matched coefficients directly"],
-                "equivalence_status": "exact"
-            }
-        },
-        "alternative_candidates": [],
-        "experiment_description": "Mock CLI output: equation matched to mass-spring-damper.",
-        "build_instructions": {},
-        "measurement_plan": {},
-        "warnings": []
-    }
+from src.api import compile_equation  # noqa: E402
 
-def main():
-    parser = argparse.ArgumentParser(description="Physical Compiler CLI (stub)")
-    parser.add_argument("--raw-text", type=str, help="Raw equation text")
-    parser.add_argument("--builder-state", type=str, help="JSON string of EquationSpec from builder")
-    parser.add_argument("--config", type=str, required=True, help="JSON string of config")
+_PRIME = "\u2032"
+_MINUS = "\u2212"
+
+
+def _fmt_number(v: float) -> str:
+    rounded = round(v, 4)
+    return str(int(rounded)) if rounded == int(rounded) else str(rounded)
+
+
+def _typeset(spec: dict) -> str:
+    """Small Python port of web/typeset.js's typesetSpec(), for plain-text
+    terminal output. Kept independently rather than shelling out to node --
+    same logic, different rendering target (unicode text vs HTML spans)."""
+    dep_var = spec.get("dependent_var", "y")
+    terms = sorted(spec.get("terms", []), key=lambda t: -t["derivative_order"])
+    parts = []
+
+    for term in terms:
+        value = float(term["coefficient"])
+        if value == 0:
+            continue
+        magnitude = abs(value)
+        sign = _MINUS if value < 0 else "+"
+        coef_text = "" if magnitude == 1 else _fmt_number(magnitude)
+        primes = _PRIME * term["derivative_order"]
+
+        if parts:
+            parts.append(sign)
+        elif value < 0:
+            parts.append(_MINUS)
+        parts.append(f"{coef_text}{dep_var}{primes}")
+
+    if not parts:
+        parts = ["0"]
+
+    t_name = (spec.get("independent_vars") or ["t"])[0]
+    rhs = _typeset_forcing(spec.get("rhs_forcing") or {}, t_name)
+    return f"{' '.join(parts)} = {rhs}"
+
+
+def _typeset_forcing(forcing: dict, t_name: str) -> str:
+    ftype = forcing.get("type", "zero")
+    p = forcing.get("params") or {}
+
+    def n(key, default=1):
+        return _fmt_number(float(p.get(key, default)))
+
+    if ftype == "const":
+        return n("value")
+    if ftype == "sin":
+        phase = f" + {n('phase', 0)}" if p.get("phase") else ""
+        return f"{n('amplitude')} sin({n('frequency')}{t_name}{phase})"
+    if ftype == "cos":
+        phase = f" + {n('phase', 0)}" if p.get("phase") else ""
+        return f"{n('amplitude')} cos({n('frequency')}{t_name}{phase})"
+    if ftype == "step":
+        return f"{n('value')} \u00b7 H({t_name})"
+    if ftype == "impulse":
+        return f"{n('value')} \u00b7 \u03b4({t_name})"
+    if ftype == "polynomial":
+        return f"{n('slope')}{t_name}"
+    return "0"
+
+
+def _build_config(seed) -> dict:
+    if seed is None:
+        return {"candidate_selection_mode": "deterministic_top_rank", "candidate_seed": None}
+    return {"candidate_selection_mode": "seeded_random", "candidate_seed": seed}
+
+
+def _print_human(output_dict: dict) -> None:
+    print(_typeset(output_dict["input_equation_spec"]))
+    print()
+
+    selected = output_dict["selected_candidate"]
+    print(output_dict["experiment_description"])
+
+    if selected is None:
+        for w in output_dict["warnings"]:
+            print(f"  ! {w}")
+        return
+
+    print()
+    blanks = output_dict.get("description_blanks") or []
+    if blanks:
+        print("Fill in the setup:")
+        width = max(len(b["template"]) for b in blanks) + 1
+        for b in blanks:
+            unit = f" {b['unit']}" if b["unit"] else ""
+            print(f"  {(b['template'] + ':').ljust(width + 1)} {b['value']}{unit}")
+        print()
+
+    print(f"Verification: {selected['verification_status']} (residual {selected['residual_expr']})")
+
+    alternatives = output_dict.get("alternative_candidates") or []
+    if alternatives:
+        names = ", ".join(a["model_id"] for a in alternatives)
+        print(f"Also realizable as: {names}")
+
+    for w in output_dict["warnings"]:
+        print(f"  ! {w}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="physcompile",
+        description="Compile a differential equation into a physical experiment description.",
+    )
+    parser.add_argument("equation", nargs="?", help="Equation text, e.g. \"y'' + 2y' + 5y = 0\"")
+    parser.add_argument(
+        "--spec-file", type=Path, default=None,
+        help="Path to a JSON file containing an EquationSpec (builder_state), instead of typed equation text.",
+    )
+    parser.add_argument("--seed", type=int, default=None, help="Use seeded_random candidate selection with this seed.")
+    parser.add_argument("--json", action="store_true", help="Print the full ExperimentOutput JSON instead of the human-readable summary.")
     args = parser.parse_args()
 
-    if (args.raw_text is None) == (args.builder_state is None):
-        print("Error: Exactly one of --raw-text or --builder-state must be provided.", file=sys.stderr)
-        sys.exit(1)
+    if (args.equation is None) == (args.spec_file is None):
+        parser.error("provide exactly one of: equation text, or --spec-file")
 
     builder_state = None
-    if args.builder_state:
+    if args.spec_file:
         try:
-            builder_state = json.loads(args.builder_state)
-        except json.JSONDecodeError:
-            print("Error: builder-state must be valid JSON", file=sys.stderr)
-            sys.exit(1)
+            builder_state = json.loads(args.spec_file.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"Couldn't read --spec-file: {exc}", file=sys.stderr)
+            return 1
+
+    config = _build_config(args.seed)
 
     try:
-        config = json.loads(args.config)
-    except json.JSONDecodeError:
-        print("Error: config must be valid JSON", file=sys.stderr)
-        sys.exit(1)
+        output = compile_equation(args.equation, builder_state, config)
+    except Exception as exc:  # noqa: BLE001 -- CLI boundary: report, don't traceback
+        print(f"Couldn't compile that equation: {exc}", file=sys.stderr)
+        return 1
 
-    result = mock_compile(args.raw_text, builder_state, config)
-    print(json.dumps(result, indent=2))
+    output_dict = output.to_dict()
+
+    if args.json:
+        print(json.dumps(output_dict, indent=2))
+    else:
+        _print_human(output_dict)
+
+    return 0 if output_dict["selected_candidate"] else 1
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        sys.exit(main())
+    except BrokenPipeError:
+        # e.g. `physcompile ... | head` -- not an error, just a closed reader.
+        devnull = None
+        try:
+            devnull = open("/dev/null", "wb")
+            sys.stdout = devnull
+        finally:
+            sys.exit(0)
