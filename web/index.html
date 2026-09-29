@@ -1,79 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Physical Compiler – Equation Builder</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Physical Compiler</title>
+<meta name="description" content="Compile a differential equation into a physical apparatus you can actually build." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header>
-    <h1>⚙️ Physical Compiler</h1>
-    <p>Deterministic DiffEq → Physical Experiment</p>
-  </header>
 
-  <main>
-    <section id="builder">
-      <h2>Equation Builder</h2>
-      <form id="equation-form">
-        <!-- Order -->
-        <div class="field">
-          <label for="order">Order</label>
-          <select id="order" name="order">
-            <option value="1">1st</option>
-            <option value="2" selected>2nd</option>
-          </select>
-        </div>
+<header class="masthead">
+  <svg class="masthead-wave" viewBox="0 0 800 60" preserveAspectRatio="none" aria-hidden="true">
+    <path class="masthead-wave-path" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  </svg>
+  <div class="masthead-title">
+    <h1>Physical Compiler</h1>
+    <p class="masthead-sub">Differential equations, compiled into apparatus you can build.</p>
+  </div>
+  <div class="masthead-status" id="status-strip" aria-live="polite">
+    <span class="status-dot" data-state="pending"></span>
+    <span class="status-text">connecting</span>
+  </div>
+</header>
 
-        <!-- Coefficients (dynamically generated) -->
-        <div id="coefficients-container">
-          <!-- filled by JS -->
-        </div>
+<main class="bench">
 
-        <!-- Forcing -->
-        <div class="field">
-          <label for="forcing-type">Forcing type</label>
-          <select id="forcing-type" name="forcing-type">
-            <option value="zero">Zero</option>
-            <option value="const">Constant</option>
-            <option value="sin">Sine</option>
-            <option value="cos">Cosine</option>
-            <option value="step">Step</option>
-            <option value="impulse">Impulse</option>
-            <option value="polynomial">Polynomial</option>
-            <option value="custom_expr">Custom expression</option>
-          </select>
-        </div>
+  <!-- ---------- LEFT: the mathematics ---------- -->
+  <section class="panel panel-math" aria-labelledby="math-heading">
+    <h2 id="math-heading" class="panel-heading">The equation</h2>
 
-        <div id="forcing-params" class="field-group">
-          <!-- extra params for forcing, shown conditionally -->
-        </div>
+    <div class="equation-stage">
+      <div class="equation-display" id="equation-display" aria-live="polite"></div>
+      <p class="equation-note" id="equation-note"></p>
+    </div>
 
-        <!-- Initial conditions -->
-        <div id="initial-conditions" class="field-group">
-          <h4>Initial conditions</h4>
+    <div class="mode-switch" role="tablist" aria-label="How to specify the equation">
+      <button type="button" class="mode-tab" data-mode="build" role="tab" aria-selected="true">Build with controls</button>
+      <button type="button" class="mode-tab" data-mode="text" role="tab" aria-selected="false">Type the equation</button>
+    </div>
+
+    <form id="equation-form" novalidate>
+
+      <div id="build-mode-fields">
+        <fieldset class="control-block">
+          <legend>Order</legend>
+          <div class="segmented" role="radiogroup" aria-label="Equation order">
+            <label class="segment">
+              <input type="radio" name="order" value="1" />
+              <span>First</span>
+            </label>
+            <label class="segment">
+              <input type="radio" name="order" value="2" checked />
+              <span>Second</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="control-block">
+          <legend>Coefficients</legend>
+          <div id="coefficient-rows" class="coefficient-rows"></div>
+        </fieldset>
+
+        <fieldset class="control-block">
+          <legend>Driving term</legend>
           <div class="field">
-            <label for="y0">y(0)</label>
-            <input type="number" id="y0" name="y0" step="any" value="0" />
+            <select id="forcing-type" name="forcing-type">
+              <option value="zero">None — the system rings freely</option>
+              <option value="const">Constant push</option>
+              <option value="sin">Sine wave</option>
+              <option value="cos">Cosine wave</option>
+              <option value="step">Step at t = 0</option>
+              <option value="impulse">Impulse at t = 0</option>
+              <option value="polynomial">Ramp</option>
+            </select>
           </div>
-          <div class="field" id="yprime0-container">
-            <label for="yprime0">y'(0)</label>
-            <input type="number" id="yprime0" name="yprime0" step="any" value="0" />
-          </div>
-        </div>
+          <div id="forcing-params" class="forcing-params"></div>
+        </fieldset>
+      </div>
 
-        <button type="submit">Compile</button>
-      </form>
-    </section>
+      <div id="text-mode-fields" hidden>
+        <fieldset class="control-block">
+          <legend>Equation</legend>
+          <label class="field-label" for="raw-equation">
+            Primes, d/dt notation, or sin/cos/step/impulse — checked against the compiler as you type.
+          </label>
+          <textarea id="raw-equation" class="raw-equation" rows="2" spellcheck="false"
+                    placeholder="y'' + 2*y' + 5*y = 0"></textarea>
+          <p class="parse-status" id="parse-status" aria-live="polite"></p>
+          <div class="example-chips" id="example-chips"></div>
+        </fieldset>
+      </div>
 
-    <section id="results" style="display: none;">
-      <h2>Experiment Output</h2>
-      <div id="results-content"></div>
-    </section>
-  </main>
+      <fieldset class="control-block">
+        <legend>Starting conditions</legend>
+        <div class="ic-row" id="ic-row"></div>
+        <p class="field-note">Affects the preview curve only — not part of the equation itself, so it isn't sent to the compiler.</p>
+      </fieldset>
 
-  <script src="builder.js"></script>
-  <script src="viewer.js"></script>
-  <script src="app.js"></script>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" id="compile-btn">Compile to apparatus</button>
+        <button type="button" class="btn btn-ghost" id="surprise-btn" title="Pick a different realization at random, reproducibly">
+          Try another realization
+        </button>
+      </div>
+      <p class="seed-note" id="seed-note" hidden></p>
+    </form>
+  </section>
+
+  <!-- ---------- RIGHT: behaviour + apparatus ---------- -->
+  <section class="panel panel-phys" aria-labelledby="phys-heading">
+    <h2 id="phys-heading" class="panel-heading">Its behaviour</h2>
+
+    <figure class="trace-figure">
+      <div class="trace-frame">
+        <svg id="trace-svg" viewBox="0 0 560 240" preserveAspectRatio="none" role="img"
+             aria-label="Computed response of the equation over time"></svg>
+      </div>
+      <figcaption id="trace-caption" class="trace-caption"></figcaption>
+    </figure>
+
+    <div id="results-root" class="results-root">
+      <div class="empty-state" id="empty-state">
+        <svg class="empty-mark" viewBox="0 0 120 80" aria-hidden="true">
+          <path d="M8 40 Q 30 8, 52 40 T 96 40" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".5"/>
+          <circle cx="112" cy="40" r="3" fill="currentColor" opacity=".5"/>
+        </svg>
+        <p>The curve above is computed in your browser from the coefficients on the left.
+           Compile to find out which real apparatus obeys the same equation.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="colophon">
+  <span id="version-line">Deterministic by construction — the same equation always compiles to the same apparatus.</span>
+</footer>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,12 @@
+{
+  "name": "physical-compiler-frontend-tests",
+  "private": true,
+  "type": "module",
+  "description": "jsdom is the only dependency here, used solely by tests/frontend/ to execute the real web/app.js against a real DOM and catch bugs that syntax-checking and CSS validation can't (see docs/STATUS.md's constructor-race-crash entry for why this exists). Nothing here is deployed -- the actual frontend (web/) has zero build step and zero dependencies.",
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  },
+  "scripts": {
+    "test:frontend": "node tests/frontend/run.mjs"
+  }
+}
