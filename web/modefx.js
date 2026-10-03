@@ -1,29 +1,35 @@
 export function buildStarfield(container) {
   if (!container || container.children.length > 0) return;
 
-  for (const layer of [
-    { count: 90, sizeRange: [1, 2], speed: 90, opacity: [0.3, 0.7] },
-    { count: 40, sizeRange: [2, 3], speed: 55, opacity: [0.5, 1] },
-  ]) {
-    const div = document.createElement("div");
-    div.className = "starfield-layer";
-    div.style.animationDuration = `${layer.speed}s`;
-    for (let i = 0; i < layer.count; i++) {
-      const star = document.createElement("span");
-      star.className = "star";
-      const size = rand(...layer.sizeRange);
-      star.style.width = star.style.height = `${size}px`;
-      // Placed across TWO screen-widths so a -100% translateX drift loops
-      // seamlessly -- same seamless-tiling idea as wavepath.js's sine wave.
-      star.style.left = `${rand(0, 200)}%`;
-      star.style.top = `${rand(0, 100)}%`;
-      star.style.opacity = String(rand(...layer.opacity));
-      star.style.animationDelay = `${rand(0, 4)}s`;
-      star.style.animationDuration = `${rand(2, 5)}s`;
-      div.appendChild(star);
+  function generateBoxShadow(n) {
+    let value = `${Math.floor(Math.random()*2000)}px ${Math.floor(Math.random()*2000)}px #FFF`;
+    for(let i = 2; i <= n; i++) {
+      value += `, ${Math.floor(Math.random()*2000)}px ${Math.floor(Math.random()*2000)}px #FFF`;
     }
-    container.appendChild(div);
+    return value;
   }
+
+  // Parallax stars
+  const pSmall = document.createElement("div");
+  pSmall.className = "parallax-layer";
+  pSmall.style.width = "1px"; pSmall.style.height = "1px";
+  pSmall.style.animationDuration = `${rand(40, 60)}s`;
+  pSmall.style.boxShadow = generateBoxShadow(Math.floor(rand(50, 100)));
+  container.appendChild(pSmall);
+
+  const pMed = document.createElement("div");
+  pMed.className = "parallax-layer";
+  pMed.style.width = "2px"; pMed.style.height = "2px";
+  pMed.style.animationDuration = `${rand(80, 120)}s`;
+  pMed.style.boxShadow = generateBoxShadow(Math.floor(rand(20, 50)));
+  container.appendChild(pMed);
+
+  const pBig = document.createElement("div");
+  pBig.className = "parallax-layer";
+  pBig.style.width = "3px"; pBig.style.height = "3px";
+  pBig.style.animationDuration = `${rand(120, 180)}s`;
+  pBig.style.boxShadow = generateBoxShadow(Math.floor(rand(10, 20)));
+  container.appendChild(pBig);
 
   // A couple of decorative planets.
   for (const p of [
@@ -39,61 +45,89 @@ export function buildStarfield(container) {
     planet.style.animationDuration = `${rand(30, 50)}s`;
     container.appendChild(planet);
   }
-}
 
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-function buildAtomIcon() {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", "0 0 60 60");
-  svg.classList.add("atom-icon");
-
-  const nucleus = document.createElementNS(SVG_NS, "circle");
-  nucleus.setAttribute("cx", "30"); nucleus.setAttribute("cy", "30"); nucleus.setAttribute("r", "4");
-  nucleus.classList.add("atom-nucleus");
-  svg.appendChild(nucleus);
-
-  for (const rotation of [0, 60, 120]) {
-    const group = document.createElementNS(SVG_NS, "g");
-    group.classList.add("atom-orbit-group");
-    group.style.transformOrigin = "30px 30px";
-    group.setAttribute("transform", `rotate(${rotation} 30 30)`);
-
-    const ellipse = document.createElementNS(SVG_NS, "ellipse");
-    ellipse.setAttribute("cx", "30"); ellipse.setAttribute("cy", "30");
-    ellipse.setAttribute("rx", "24"); ellipse.setAttribute("ry", "9");
-    ellipse.classList.add("atom-orbit");
-    group.appendChild(ellipse);
-
-    const electron = document.createElementNS(SVG_NS, "circle");
-    electron.setAttribute("r", "2.4");
-    electron.classList.add("atom-electron");
-    const anim = document.createElementNS(SVG_NS, "animateMotion");
-    anim.setAttribute("dur", `${rand(3, 6).toFixed(1)}s`);
-    anim.setAttribute("repeatCount", "indefinite");
-    anim.setAttribute("path", "M 6,30 A 24 9 0 1 1 54,30 A 24 9 0 1 1 6,30");
-    electron.appendChild(anim);
-    group.appendChild(electron);
+  // Shooting stars
+  const shootingCount = Math.floor(rand(1, 4));
+  for (let i = 0; i < shootingCount; i++) {
+    const star = document.createElement("div");
+    star.className = "shooting-star";
+    star.style.top = `${rand(10, 80)}%`;
+    star.style.left = "-100px";
+    star.style.animationDelay = `${rand(0, 10)}s`;
+    star.style.animationDuration = `${rand(3, 8)}s`;
+    container.appendChild(star);
   }
-  return svg;
 }
 
 export function buildAtomicField(container) {
   if (!container || container.children.length > 0) return;
 
-  const positions = [
-    [10, 20], [85, 15], [75, 80], [25, 70], [45, 45],
-    [5, 85], [95, 55], [35, 5]
-  ];
-  for (const [left, top] of positions) {
-    const icon = buildAtomIcon();
-    icon.style.left = `${left}%`;
-    icon.style.top = `${top}%`;
-    icon.style.width = icon.style.height = `${rand(40, 80)}px`;
-    icon.style.animationDuration = `${rand(14, 28)}s`;
-    icon.style.animationDirection = Math.random() < 0.5 ? "normal" : "reverse";
-    container.appendChild(icon);
+  const floaters = document.createElement("div");
+  floaters.id = "quantum-floaters";
+  floaters.style.width = "100%";
+  floaters.style.height = "100%";
+  floaters.style.position = "absolute";
+  
+  const numBalls = Math.floor(rand(6, 12));
+  for (let i = 0; i < numBalls; i++) {
+    const ball = document.createElement("div");
+    ball.className = "floating-shape";
+    const size = rand(10, 25);
+    ball.style.width = `${size}vmin`;
+    ball.style.height = `${size}vmin`;
+    ball.style.top = `${rand(10, 80)}%`;
+    ball.style.left = `${rand(10, 80)}%`;
+    ball.style.color = Math.random() > 0.5 ? "#7CF7C4" : "#FF6BD6"; // Match Antman palette
+    ball.style.boxShadow = `${Math.random() > 0.5 ? 40 : -40}vmin 0 5.5vmin currentColor`;
+    ball.style.transformOrigin = `${rand(-25, 25)}vw ${rand(-25, 25)}vh`;
+    ball.style.animationDuration = `${rand(25, 60)}s`;
+    ball.style.animationDelay = `-${rand(0, 40)}s`;
+    ball.style.opacity = "0.4";
+    floaters.appendChild(ball);
   }
+  container.appendChild(floaters);
+}
+
+export function playQuantumCompile(container) {
+  if (prefersReducedMotion()) return;
+  const floaters = container.querySelector("#quantum-floaters");
+  if (floaters) floaters.style.display = "none";
+
+  const swirlWrap = document.createElement("div");
+  swirlWrap.className = "quantum-swirl-wrap";
+
+  const total = 100;
+  for (let i = 0; i < total; i++) {
+    const tri = document.createElement("div");
+    tri.className = "swirl-tri";
+    const size = Math.random() * 50;
+    const rot = Math.random() * 360;
+    // Pinks and teals
+    const hue = Math.random() > 0.5 ? rand(150, 180) : rand(280, 330);
+    tri.style.borderTop = `${size}px solid hsla(${hue}, 100%, 60%, 1)`;
+    tri.style.borderRight = `${size}px solid transparent`;
+    tri.style.borderLeft = `${size}px solid transparent`;
+    tri.style.marginLeft = `-${size/2}px`;
+    tri.style.marginTop = `-${size/2}px`;
+    
+    swirlWrap.appendChild(tri);
+
+    tri.animate([
+      { opacity: 1, transform: `rotate(${rot * 1.5}deg) translate3d(${rand(0, 1000)}px, ${rand(0, 1000)}px, 1000px) scale(1)` },
+      { opacity: 0, transform: `rotate(${rot}deg) translate3d(0,0,-1500px) scale(0)` }
+    ], {
+      duration: 3000,
+      iterations: Infinity,
+      delay: i * -(3000/total)
+    });
+  }
+
+  container.appendChild(swirlWrap);
+
+  setTimeout(() => {
+    swirlWrap.remove();
+    if (floaters) floaters.style.display = "block";
+  }, 3000);
 }
 
 export function playRipple(originEvent) {
@@ -117,7 +151,11 @@ export function playRipple(originEvent) {
 export function playGlitchSqueeze() {
   if (prefersReducedMotion()) return;
   document.documentElement.classList.add("glitch-squeeze");
-  setTimeout(() => document.documentElement.classList.remove("glitch-squeeze"), 650);
+  setTimeout(() => {
+    document.documentElement.classList.remove("glitch-squeeze");
+    const filters = ["hue-rotate(90deg)", "invert(0.2)", "hue-rotate(-90deg)", "invert(0.1)"];
+    document.documentElement.style.filter = filters[Math.floor(Math.random() * filters.length)];
+  }, 650);
 }
 
 function prefersReducedMotion() {

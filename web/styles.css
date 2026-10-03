@@ -96,7 +96,7 @@ button, input, select { font: inherit; color: inherit; }
   justify-content: space-between;
   padding: 2.25rem clamp(1rem, 4vw, 3rem) 1.25rem;
   border-bottom: 1px solid var(--rule-strong);
-  background: linear-gradient(to bottom, rgba(246,248,246,.94), rgba(246,248,246,.62));
+  background: var(--masthead-bg, linear-gradient(to bottom, rgba(246,248,246,.94), rgba(246,248,246,.62)));
 }
 
 /* A faint, endlessly-drifting sine trace behind the title -- the one purely
@@ -109,7 +109,7 @@ button, input, select { font: inherit; color: inherit; }
   width: 100%;
   height: 100%;
   color: var(--math);
-  opacity: .16;
+  opacity: var(--wave-opacity, .16);
   pointer-events: none;
 }
 .masthead-wave-path {
@@ -758,14 +758,18 @@ body[data-theme="celestial"] {
   --ink: #E8ECF7; --ink-soft: #B7C0DD; --ink-faint: #7C88AE;
   --math: #6FD8E8; --math-wash: #16324A;
   --phys: #F2B84B; --phys-wash: #3A2E12;
+  --masthead-bg: linear-gradient(to bottom, rgba(11,16,32,.94), rgba(11,16,32,.62));
+  --wave-opacity: 0.4;
 }
 
 body[data-theme="quantum"] {
-  --paper: #06121A; --paper-raised: #0D1F2B; --paper-sunk: #081620;
-  --rule: #1E3A47; --rule-strong: #2C5262;
+  --paper: #1A0B2E; --paper-raised: #2D1B4E; --paper-sunk: #110622;
+  --rule: #3D2B5E; --rule-strong: #5B4082;
   --ink: #DFF7F2; --ink-soft: #9FD6CC; --ink-faint: #5E958C;
-  --math: #7CF7C4; --math-wash: #103326;
-  --phys: #FF6BD6; --phys-wash: #3A1130;
+  --math: #7CF7C4; --math-wash: #173B34;
+  --phys: #FF6BD6; --phys-wash: #4A163B;
+  --masthead-bg: linear-gradient(to bottom, rgba(26,11,46,.94), rgba(26,11,46,.62));
+  --wave-opacity: 0.3;
 }
 
 #mode-backdrop {
@@ -819,12 +823,62 @@ body > .theme-tabs-wrap, body > .masthead, body > main, body > footer {
   animation: glitch-anim 650ms cubic-bezier(.36,.07,.19,.97) both;
 }
 @keyframes glitch-anim {
-  0% { transform: scaleY(1) translateX(0); }
+  0% { transform: scaleY(1) translateX(0); filter: none; }
   20% { transform: scaleY(0.95) translateX(-5px); filter: hue-rotate(90deg); }
   40% { transform: scaleY(1.02) translateX(5px); filter: invert(0.2); }
-  60% { transform: scaleY(0.98) translateX(-2px); }
-  80% { transform: scaleY(1.01) translateX(2px); filter: hue-rotate(-90deg); }
+  60% { transform: scaleY(0.98) translateX(-2px); filter: hue-rotate(-90deg); }
+  80% { transform: scaleY(1.01) translateX(2px); filter: invert(0.1); }
   100% { transform: scaleY(1) translateX(0); filter: none; }
+}
+
+@keyframes animStar {
+  from { transform: translateY(0px); }
+  to { transform: translateY(-2000px); }
+}
+.parallax-layer {
+  width: 1px; height: 1px; background: transparent;
+  animation: animStar linear infinite;
+}
+.parallax-layer::after {
+  content: " "; position: absolute; top: 2000px;
+  width: inherit; height: inherit; background: transparent;
+  box-shadow: inherit;
+}
+
+.shooting-star {
+  position: absolute;
+  width: 100px; height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
+  animation: shoot infinite ease-in;
+}
+@keyframes shoot {
+  0% { transform: translateX(0) translateY(0) rotate(25deg); opacity: 1; }
+  100% { transform: translateX(120vw) translateY(50vh) rotate(25deg); opacity: 0; }
+}
+
+@keyframes float-shape {
+  100% { transform: translate3d(0, 0, 1px) rotate(360deg); }
+}
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  backface-visibility: hidden;
+  animation: float-shape linear infinite;
+}
+
+.quantum-swirl-wrap {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  perspective: 800px;
+  z-index: 10;
+  pointer-events: none;
+}
+.swirl-tri {
+  height: 0; width: 0;
+  position: absolute;
+  top: 50%; left: 50%;
+  opacity: 0;
 }
 
 @media (max-width: 900px) {

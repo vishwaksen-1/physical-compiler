@@ -15,7 +15,7 @@ import { coefficientsFromSpec } from "./typeset.js";
 import { integrate, renderTrace, describeRegime } from "./solver.js";
 import { renderOutput, renderCompiling, renderError } from "./viewer.js";
 import { buildWavePath } from "./wavepath.js";
-import { buildStarfield, buildAtomicField, playRipple, playGlitchSqueeze } from "./modefx.js";
+import { buildStarfield, buildAtomicField, playRipple, playGlitchSqueeze, playQuantumCompile } from "./modefx.js";
 
 const statusStrip = document.getElementById("status-strip");
 const traceSvg = document.getElementById("trace-svg");
@@ -125,6 +125,7 @@ function setTheme(next, originEvent) {
     tab.setAttribute("aria-selected", String(isActive));
   }
   document.body.dataset.theme = theme; // CSS hook for Phase 04's dark palettes
+  document.documentElement.style.filter = ""; // Clear any leftover glitch filters
 
   if (theme === "celestial") {
     buildStarfield(backdropCelestial);
@@ -184,6 +185,10 @@ async function compile({ seed = null } = {}) {
 
   setBusy(true);
   renderCompiling(resultsRoot);
+
+  if (theme === "quantum") {
+    playQuantumCompile(backdropQuantum);
+  }
 
   try {
     const res = await fetch("/api/compile", {
