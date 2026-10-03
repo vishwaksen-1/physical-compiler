@@ -94,11 +94,18 @@ function clearPreview() {
   traceCaption.textContent = "";
 }
 
+function clearResults() {
+  resultsRoot.innerHTML = "";
+  seedNote.hidden = true;
+}
+
 /* ------------------------------------------------------------------- modes */
 
 function setMode(next) {
   if (next === mode) return;
   mode = next;
+
+  clearResults();
 
   buildFields.hidden = mode !== "build";
   textFields.hidden = mode !== "text";
@@ -118,6 +125,8 @@ function setTheme(next, originEvent) {
   if (next === theme) return;
   const previous = theme;
   theme = next;
+
+  clearResults();
 
   for (const tab of themeTabs) {
     const isActive = tab.dataset.themeTab === theme;
