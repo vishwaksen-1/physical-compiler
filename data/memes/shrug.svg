@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="A shrugging figure, used as a placeholder when no apparatus photo is available yet">
+  <style>
+    .ink   { stroke: #16211F; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .phys  { stroke: #8E4B1C; stroke-width: 3; fill: none; stroke-linecap: round; }
+    .wash  { fill: #F0E3D8; stroke: none; }
+    .mark  { font-family: Georgia, "Times New Roman", serif; font-style: italic; fill: #8E4B1C; }
+  </style>
+
+  <!-- head -->
+  <circle class="wash" cx="80" cy="55" r="22"/>
+  <circle class="ink" cx="80" cy="55" r="22"/>
+  <!-- unbothered little eyes -->
+  <line class="ink" x1="72" y1="52" x2="78" y2="52"/>
+  <line class="ink" x1="84" y1="52" x2="90" y2="52"/>
+  <path class="ink" d="M72 64 Q80 68 88 64"/>
+
+  <!-- body -->
+  <line class="ink" x1="80" y1="77" x2="80" y2="130"/>
+
+  <!-- shrugging arms, raised -->
+  <path class="ink" d="M80 90 Q55 85 45 60"/>
+  <path class="ink" d="M80 90 Q105 85 115 60"/>
+
+  <!-- legs -->
+  <line class="ink" x1="80" y1="130" x2="62" y2="172"/>
+  <line class="ink" x1="80" y1="130" x2="98" y2="172"/>
+
+  <!-- the question -->
+  <path class="phys" d="M150 55 q0 -18 18 -18 q18 0 18 16 q0 12 -12 16 q-6 2 -6 12"/>
+  <circle cx="168" cy="98" r="2.6" fill="#8E4B1C"/>
+  <text class="mark" x="100" y="150" font-size="13" text-anchor="middle">no photo yet</text>
+</svg>

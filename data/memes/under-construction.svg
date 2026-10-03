@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="A gear doodle, used as a placeholder when no apparatus photo is available yet">
+  <style>
+    .ink   { stroke: #16211F; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .phys  { stroke: #8E4B1C; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .wash  { fill: #F0E3D8; stroke: #8E4B1C; stroke-width: 3; }
+    .mark  { font-family: Georgia, "Times New Roman", serif; font-style: italic; fill: #4C5B57; }
+  </style>
+
+  <g transform="translate(100,85)">
+    <circle class="wash" r="42"/>
+    <circle class="ink" r="16" fill="#EDF0EE"/>
+    <g class="phys">
+      <line x1="0" y1="-42" x2="0" y2="-58"/>
+      <line x1="0" y1="42" x2="0" y2="58"/>
+      <line x1="-42" y1="0" x2="-58" y2="0"/>
+      <line x1="42" y1="0" x2="58" y2="0"/>
+      <line x1="-30" y1="-30" x2="-41" y2="-41"/>
+      <line x1="30" y1="-30" x2="41" y2="-41"/>
+      <line x1="-30" y1="30" x2="-41" y2="41"/>
+      <line x1="30" y1="30" x2="41" y2="41"/>
+    </g>
+  </g>
+
+  <text class="mark" x="100" y="175" font-size="13" text-anchor="middle">apparatus photo</text>
+  <text class="mark" x="100" y="192" font-size="13" text-anchor="middle">pending</text>
+</svg>
