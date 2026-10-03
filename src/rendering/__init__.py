@@ -54,6 +54,8 @@ _DOMAIN_ARTICLE = {
     "mechanical": "a mechanical",
     "electrical": "an electrical",
     "thermal": "a thermal",
+    "optomechanical": "an optomechanical",
+    "magnetic": "a magnetic-resonance",
     "other": "a",
 }
 

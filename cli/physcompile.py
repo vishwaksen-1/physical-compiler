@@ -91,10 +91,15 @@ def _typeset_forcing(forcing: dict, t_name: str) -> str:
     return "0"
 
 
-def _build_config(seed) -> dict:
+def _build_config(seed, theme) -> dict:
+    config = {}
     if seed is None:
-        return {"candidate_selection_mode": "deterministic_top_rank", "candidate_seed": None}
-    return {"candidate_selection_mode": "seeded_random", "candidate_seed": seed}
+        config.update({"candidate_selection_mode": "deterministic_top_rank", "candidate_seed": None})
+    else:
+        config.update({"candidate_selection_mode": "seeded_random", "candidate_seed": seed})
+    if theme:
+        config["theme"] = theme
+    return config
 
 
 def _print_human(output_dict: dict) -> None:
@@ -141,6 +146,7 @@ def main() -> int:
         help="Path to a JSON file containing an EquationSpec (builder_state), instead of typed equation text.",
     )
     parser.add_argument("--seed", type=int, default=None, help="Use seeded_random candidate selection with this seed.")
+    parser.add_argument("--theme", type=str, default=None, help="Theme for the compile request (e.g. celestial, quantum).")
     parser.add_argument("--json", action="store_true", help="Print the full ExperimentOutput JSON instead of the human-readable summary.")
     args = parser.parse_args()
 
@@ -155,7 +161,7 @@ def main() -> int:
             print(f"Couldn't read --spec-file: {exc}", file=sys.stderr)
             return 1
 
-    config = _build_config(args.seed)
+    config = _build_config(args.seed, args.theme)
 
     try:
         output = compile_equation(args.equation, builder_state, config)

@@ -96,12 +96,59 @@ def _newtons_cooling_check(model, values: dict) -> list[str]:
     return _time_constant_check(model.model_id, 1.0 / values["k"])
 
 
+# --- Themed models (God Mode / Antman Mode) ---
+
+def _mirror_ringdown_check(model, values: dict) -> list[str]:
+    if not {"m", "c", "k"} <= values.keys():
+        return []
+    return _damping_ratio_check(model.model_id, values["m"], values["c"], values["k"])
+
+
+def _optical_trap_oscillator_check(model, values: dict) -> list[str]:
+    if not {"m", "c", "k"} <= values.keys():
+        return []
+    return _damping_ratio_check(model.model_id, values["m"], values["c"], values["k"])
+
+
+def _expansion_analog_check(model, values: dict) -> list[str]:
+    # Growth, not decay: 1/H is the e-folding time of the runaway, which has
+    # to be slow enough to log before the op-amp output hits the rail.
+    if "H" not in values or values["H"] == 0:
+        return []
+    return _time_constant_check(model.model_id, 1.0 / values["H"])
+
+
+def _nmr_relaxation_check(model, values: dict) -> list[str]:
+    """T1 = 1/Gamma. A benchtop pulse spectrometer resolves far faster
+    timescales than a generic DAQ (pulse spacing ~ microseconds), so this
+    uses its own bounds instead of _time_constant_check's 1 ms floor."""
+    if "Gamma" not in values or values["Gamma"] <= 0:
+        return []
+    t1 = 1.0 / values["Gamma"]
+    warnings: list[str] = []
+    if t1 < 1e-5:
+        warnings.append(
+            f"{model.model_id}: T1={t1:.2e}s is shorter than a benchtop spectrometer's "
+            f"minimum pulse spacing can sample"
+        )
+    if t1 > 10.0:
+        warnings.append(
+            f"{model.model_id}: T1={t1:.2e}s makes each inversion-recovery point take "
+            f"minutes (repetition time ~5*T1)"
+        )
+    return warnings
+
+
 MODEL_SPECIFIC_CHECKS = {
     "mass_spring_damper": _mass_spring_damper_check,
     "series_rlc": _series_rlc_check,
     "torsional_pendulum": _torsional_pendulum_check,
     "rc_circuit": _rc_circuit_check,
     "newtons_cooling": _newtons_cooling_check,
+    "mirror_ringdown": _mirror_ringdown_check,
+    "expansion_analog": _expansion_analog_check,
+    "optical_trap_oscillator": _optical_trap_oscillator_check,
+    "nmr_relaxation": _nmr_relaxation_check,
 }
 
 

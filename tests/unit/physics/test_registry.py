@@ -15,10 +15,14 @@ EXPECTED_MODEL_IDS = {
     "torsional_pendulum",
     "rc_circuit",
     "newtons_cooling",
+    "mirror_ringdown",
+    "expansion_analog",
+    "optical_trap_oscillator",
+    "nmr_relaxation",
 }
 
 
-def test_all_five_models_registered():
+def test_all_nine_models_registered():
     ids = {m.model_id for m in get_registry()}
     assert ids == EXPECTED_MODEL_IDS
 
@@ -31,6 +35,10 @@ def test_insertion_order_is_stable_and_matches_import_order():
         "torsional_pendulum",
         "rc_circuit",
         "newtons_cooling",
+        "mirror_ringdown",
+        "expansion_analog",
+        "optical_trap_oscillator",
+        "nmr_relaxation",
     ]
 
 
@@ -42,7 +50,7 @@ def test_governing_equations_are_real_sympy_equations():
 
 
 def test_second_order_alt_realizations_share_class_and_tag():
-    second_order_ids = ["mass_spring_damper", "series_rlc", "torsional_pendulum"]
+    second_order_ids = ["mass_spring_damper", "series_rlc", "torsional_pendulum", "mirror_ringdown", "optical_trap_oscillator"]
     models = {mid: get_model(mid) for mid in second_order_ids}
     class_ids = {m.alt_realizations_of for m in models.values()}
     assert class_ids == {"second_order_linear_constant_coefficient_ode"}
@@ -51,7 +59,7 @@ def test_second_order_alt_realizations_share_class_and_tag():
 
 
 def test_first_order_alt_realizations_share_class_and_tag():
-    first_order_ids = ["rc_circuit", "newtons_cooling"]
+    first_order_ids = ["rc_circuit", "newtons_cooling", "expansion_analog", "nmr_relaxation"]
     models = {mid: get_model(mid) for mid in first_order_ids}
     class_ids = {m.alt_realizations_of for m in models.values()}
     assert class_ids == {"first_order_linear_constant_coefficient_ode"}
@@ -78,7 +86,7 @@ def test_to_dict_from_dict_roundtrip_preserves_equation_string_form():
 
 def test_registry_summary_shape():
     summary = registry_summary()
-    assert len(summary) == 5
+    assert len(summary) == 9
     for entry in summary:
         # {"model_id", "display_name", "domain"} is the frozen
         # INTERFACE_CONTRACTS.md §9 shape; "artwork" is an additive
@@ -114,3 +122,14 @@ def test_every_model_has_nonempty_safety_notes_and_construction_requirements():
         assert len(model.safety_notes) >= 1
         assert "components" in model.construction_requirements
         assert len(model.construction_requirements["components"]) >= 1
+
+def test_themes_are_correct():
+    assert get_model("mass_spring_damper").theme is None
+    assert get_model("series_rlc").theme is None
+    assert get_model("torsional_pendulum").theme is None
+    assert get_model("rc_circuit").theme is None
+    assert get_model("newtons_cooling").theme is None
+    assert get_model("mirror_ringdown").theme == "celestial"
+    assert get_model("expansion_analog").theme == "celestial"
+    assert get_model("optical_trap_oscillator").theme == "quantum"
+    assert get_model("nmr_relaxation").theme == "quantum"

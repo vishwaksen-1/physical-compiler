@@ -14,6 +14,8 @@ const DOMAIN_LABEL = {
   mechanical: "mechanical apparatus",
   electrical: "electrical circuit",
   thermal: "thermal apparatus",
+  optomechanical: "optomechanical apparatus",
+  magnetic: "magnetic-resonance apparatus",
   other: "apparatus",
 };
 

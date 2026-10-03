@@ -1,0 +1,77 @@
+model_id: expansion_analog
+display_name: Positive-Feedback Expansion Analog
+domain: electrical
+theme: celestial
+
+equation_class_tags:
+  - first_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - first_order_linear_constant_coefficient_ode
+
+state_variables:
+  V: integrator output voltage, the analog of the cosmic scale factor (V)
+
+parameter_map:
+  H: growth-rate constant, analog of the Hubble rate in a dark-energy-dominated universe, H = 1/(R*C) (1/s)
+
+parameter_constraints:
+  H:
+    min: 0.01
+    max: 100.0
+    unit: 1/s
+    notes: >
+      Set by the integrator's R*C product. 0.01/s (doubling every ~70 s) up
+      to 100/s (doubling every ~7 ms). Slower rates are easier to watch on a
+      meter; faster ones need a scope.
+
+dimensional_constraints:
+  H: "[T]^-1"
+  V: "[V]"
+  homogeneity_check: "V' - H*V and F(t) must both reduce to volts per second"
+
+measurable_variables:
+  - V
+  - doubling_time
+
+controllable_variables:
+  - F
+  - V0
+
+construction_requirements:
+  components:
+    - op-amp (e.g. TL072) wired as an integrator with POSITIVE feedback
+    - precision resistor R and film capacitor C (sets H = 1/(R*C))
+    - dual-rail bench supply (+/-12 V)
+    - reset switch across C to set V0 before each run
+    - oscilloscope or data logger on the output
+  estimated_build_time_hours: 2
+  estimated_cost_usd: 45
+  notes: >
+    Positive feedback turns the usual decaying integrator into an exponential
+    grower, V' = H*V, which is the same shape as a dark-energy-dominated
+    scale factor a(t) ~ exp(H*t). The analogy breaks when the output hits the
+    supply rail: the circuit saturates, while the universe (as far as anyone
+    knows) does not. Log data only well below the rail.
+
+approximation_model:
+  type: linearization
+  assumptions:
+    - ideal op-amp (infinite gain, no input bias current) well below saturation
+    - R and C are constant (no temperature drift over the run)
+    - growth is observed only while the output is far from the supply rails
+
+error_model:
+  sources:
+    - output saturation at the supply rail ends the exponential regime
+    - op-amp input offset voltage seeds growth even from V0 = 0
+    - capacitor leakage and dielectric absorption bend the growth curve
+  expected_relative_error_pct: 6.0
+
+safety_notes:
+  - the output runs to the supply rail by design; make sure downstream equipment tolerates the full rail voltage
+  - discharge the timing capacitor through the reset switch before handling the board
+  - double-check supply polarity before power-up; reversed rails can destroy the op-amp
+
+alt_realizations_of: first_order_linear_constant_coefficient_ode

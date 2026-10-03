@@ -94,3 +94,12 @@ def test_empty_raw_text_raises_parse_error():
 def test_syntax_error_raises_parse_error():
     with pytest.raises(EquationParseError):
         parse_equation("x'' + + = 0")
+
+
+def test_scientific_notation():
+    spec = parse_equation("1.5e-3*x'' + 2E5*x' + 3.14e+2*x = 0")
+    assert validate_equation_spec(spec).valid
+    by_order = {t.derivative_order: t for t in spec.terms}
+    assert by_order[2].coefficient == 1.5e-3
+    assert by_order[1].coefficient == 2e5
+    assert by_order[0].coefficient == 3.14e2

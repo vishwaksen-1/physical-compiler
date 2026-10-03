@@ -15,6 +15,7 @@ import { coefficientsFromSpec } from "./typeset.js";
 import { integrate, renderTrace, describeRegime } from "./solver.js";
 import { renderOutput, renderCompiling, renderError } from "./viewer.js";
 import { buildWavePath } from "./wavepath.js";
+import { buildStarfield, buildAtomicField, playRipple, playGlitchSqueeze } from "./modefx.js";
 
 const statusStrip = document.getElementById("status-strip");
 const traceSvg = document.getElementById("trace-svg");
@@ -34,6 +35,11 @@ const models = new Map();
 let builder;
 let textMode;
 let mode = "build"; // "build" | "text"
+let theme = "classical"; // "classical" | "celestial" | "quantum"
+
+const themeTabs = Array.from(document.querySelectorAll("[data-theme-tab]"));
+const backdropCelestial = document.getElementById("backdrop-celestial");
+const backdropQuantum = document.getElementById("backdrop-quantum");
 
 /* ------------------------------------------------------------- live preview */
 
@@ -108,6 +114,31 @@ function setMode(next) {
   }
 }
 
+function setTheme(next, originEvent) {
+  if (next === theme) return;
+  const previous = theme;
+  theme = next;
+
+  for (const tab of themeTabs) {
+    const isActive = tab.dataset.themeTab === theme;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  }
+  document.body.dataset.theme = theme; // CSS hook for Phase 04's dark palettes
+
+  if (theme === "celestial") {
+    buildStarfield(backdropCelestial);
+    playRipple(originEvent);
+  } else if (theme === "quantum") {
+    buildAtomicField(backdropQuantum);
+    playGlitchSqueeze();
+  } else if (previous === "quantum") {
+    playGlitchSqueeze();
+  }
+
+  textMode.setExampleTheme(theme);
+}
+
 /** The current spec, from whichever mode is active, or null if the text
  * mode doesn't have a valid parse yet. */
 function currentSpec() {
@@ -144,6 +175,7 @@ async function compile({ seed = null } = {}) {
   const config = seed === null
     ? { candidate_selection_mode: "deterministic_top_rank", candidate_seed: null }
     : { candidate_selection_mode: "seeded_random", candidate_seed: seed };
+  if (theme !== "classical") config.theme = theme;
 
   // Exactly one of raw_text / builder_state, per INTERFACE_CONTRACTS.md §9.
   const body = mode === "text"
@@ -229,6 +261,10 @@ textMode = new TextMode(document, (spec) => refreshPreview(spec));
 
 for (const tab of modeTabs) {
   tab.addEventListener("click", () => setMode(tab.dataset.mode));
+}
+
+for (const tab of themeTabs) {
+  tab.addEventListener("click", (e) => setTheme(tab.dataset.themeTab, e));
 }
 
 document.getElementById("equation-form").addEventListener("submit", (e) => {

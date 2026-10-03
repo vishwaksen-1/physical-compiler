@@ -54,6 +54,13 @@ def _result(candidate: CandidateMapping, status: str, residual_expr: str, exactn
     return candidate
 
 
+def _relative_deviation(a: float, b: float) -> float:
+    denominator = max(abs(a), abs(b))
+    if denominator == 0.0:
+        return 0.0
+    return abs(a - b) / denominator
+
+
 def verify_mapping(ir: DifferentialEquationIR, candidate: CandidateMapping) -> CandidateMapping:
     """INTERFACE_CONTRACTS.md §8: verify_mapping(ir, candidate) -> CandidateMapping.
 
@@ -112,7 +119,7 @@ def verify_mapping(ir: DifferentialEquationIR, candidate: CandidateMapping) -> C
                 f"parameter_values incomplete: order-{n} coefficient unresolved", 0.0,
             )
         model_norm_n = sym.to_float(model_coeff_expr) / leading_model
-        max_deviation = max(max_deviation, abs(model_norm_n - norm_user[n]))
+        max_deviation = max(max_deviation, _relative_deviation(model_norm_n, norm_user[n]))
 
     if max_deviation < _EXACT_TOLERANCE:
         return _result(candidate, "EXACT", "0", 1.0)

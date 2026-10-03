@@ -55,7 +55,7 @@ _MODEL_DATA_DIR = _REPO_ROOT / "data" / "physical_models"
 class PhysicalModel:
     model_id: str
     display_name: str
-    domain: str  # "mechanical" | "electrical" | "thermal" | "other"
+    domain: str  # "mechanical" | "electrical" | "thermal" | "optomechanical" | "magnetic" | "other"
     equation_class_tags: list[str]
     state_variables: dict[str, str]
     governing_equation: sp.Basic  # sp.Eq(lhs, rhs); see module docstring
@@ -77,6 +77,12 @@ class PhysicalModel:
     # src/physics/models/artwork.py's module docstring. Left None at
     # construction; register_model() fills it in once, at import time.
     artwork: Optional[dict] = field(default=None)
+    # Additive, not in INTERFACE_CONTRACTS.md §3 (logged in docs/STATUS.md).
+    # Which "fun mode" this model belongs to: None = classical (the default
+    # experience), "celestial" = God Mode, "quantum" = Antman Mode. Unlike
+    # `artwork`, this is author-declared directly as a top-level YAML key.
+    # src/api's _themed_registry() filters on it before candidate generation.
+    theme: Optional[str] = field(default=None)
 
     def to_dict(self) -> dict:
         """JSON-serializable form. `governing_equation` becomes a string.

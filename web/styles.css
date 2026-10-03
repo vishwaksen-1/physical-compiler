@@ -750,6 +750,83 @@ input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--m
 
 /* -------------------------------------------------------------- responsive */
 
+/* ------------------------------------------------------------- theme modes */
+
+body[data-theme="celestial"] {
+  --paper: #0B1020; --paper-raised: #131A2E; --paper-sunk: #0D1326;
+  --rule: #2A3457; --rule-strong: #3D4A78;
+  --ink: #E8ECF7; --ink-soft: #B7C0DD; --ink-faint: #7C88AE;
+  --math: #6FD8E8; --math-wash: #16324A;
+  --phys: #F2B84B; --phys-wash: #3A2E12;
+}
+
+body[data-theme="quantum"] {
+  --paper: #06121A; --paper-raised: #0D1F2B; --paper-sunk: #081620;
+  --rule: #1E3A47; --rule-strong: #2C5262;
+  --ink: #DFF7F2; --ink-soft: #9FD6CC; --ink-faint: #5E958C;
+  --math: #7CF7C4; --math-wash: #103326;
+  --phys: #FF6BD6; --phys-wash: #3A1130;
+}
+
+#mode-backdrop {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none; overflow: hidden;
+}
+.backdrop-layer { position: absolute; inset: 0; opacity: 0; transition: opacity .3s; }
+body[data-theme="celestial"] .backdrop-celestial { opacity: 1; }
+body[data-theme="quantum"] .backdrop-quantum { opacity: 1; }
+
+body > .theme-tabs-wrap, body > .masthead, body > main, body > footer {
+  position: relative; z-index: 1;
+}
+.theme-tabs-wrap {
+  padding: 1rem clamp(1rem, 4vw, 3rem) 0;
+  background: var(--paper);
+}
+
+/* ----------------------------------------------------------------- effects */
+
+.star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle infinite alternate; }
+@keyframes twinkle { 0% { opacity: 0.2; } 100% { opacity: 1; } }
+
+.starfield-layer { position: absolute; width: 200%; height: 100%; display: flex; animation: drift-stars linear infinite; }
+@keyframes drift-stars { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+.planet { position: absolute; border-radius: 50%; animation: planet-drift linear infinite alternate; }
+@keyframes planet-drift { from { transform: translateY(-10px) rotate(-10deg); } to { transform: translateY(10px) rotate(10deg); } }
+
+.atom-icon { position: absolute; stroke: var(--math); fill: none; stroke-width: 1.5; opacity: 0.6; }
+.atom-nucleus { fill: var(--phys); stroke: none; }
+.atom-electron { fill: var(--math); stroke: none; }
+.atom-orbit-group { animation: atom-spin linear infinite; }
+@keyframes atom-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.mode-ripple {
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none;
+  background: currentColor;
+  color: var(--math-wash);
+  opacity: 0.3;
+  clip-path: circle(0 at var(--ripple-x) var(--ripple-y));
+  animation: ripple-out 600ms ease-out;
+}
+@keyframes ripple-out {
+  0% { clip-path: circle(0 at var(--ripple-x) var(--ripple-y)); opacity: 0.4; }
+  100% { clip-path: circle(var(--ripple-radius) at var(--ripple-x) var(--ripple-y)); opacity: 0; }
+}
+
+.glitch-squeeze {
+  animation: glitch-anim 650ms cubic-bezier(.36,.07,.19,.97) both;
+}
+@keyframes glitch-anim {
+  0% { transform: scaleY(1) translateX(0); }
+  20% { transform: scaleY(0.95) translateX(-5px); filter: hue-rotate(90deg); }
+  40% { transform: scaleY(1.02) translateX(5px); filter: invert(0.2); }
+  60% { transform: scaleY(0.98) translateX(-2px); }
+  80% { transform: scaleY(1.01) translateX(2px); filter: hue-rotate(-90deg); }
+  100% { transform: scaleY(1) translateX(0); filter: none; }
+}
+
 @media (max-width: 900px) {
   .bench { grid-template-columns: 1fr; }
   .panel-math { border-right: 0; border-bottom: 1px solid var(--rule-strong); }

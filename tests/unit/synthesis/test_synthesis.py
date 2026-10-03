@@ -29,17 +29,26 @@ def _ir_for(order, coeffs, forcing=None, dependent_var="y"):
 
 
 class TestGenerateCandidates:
-    def test_second_order_matches_all_three_second_order_models(self):
+    def test_second_order_matches_all_five_second_order_models(self):
         ir = _ir_for(2, {2: 1.0, 1: 2.0, 0: 5.0})
         candidates = generate_candidates(ir, get_registry())
         model_ids = {c.model_id for c in candidates}
-        assert model_ids == {"mass_spring_damper", "series_rlc", "torsional_pendulum"}
+        assert model_ids == {"mass_spring_damper", "series_rlc", "torsional_pendulum", "mirror_ringdown", "optical_trap_oscillator"}
 
-    def test_first_order_matches_both_first_order_models(self):
-        ir = _ir_for(1, {1: 1.0, 0: 4.0})
+    def test_first_order_decay_matches_three_decay_models(self):
+        ir = _ir_for(1, {1: 1.0, 0: 4.0})  # decay equation: y' + 4y = 0
         candidates = generate_candidates(ir, get_registry())
         model_ids = {c.model_id for c in candidates}
-        assert model_ids == {"rc_circuit", "newtons_cooling"}
+        assert model_ids == {"rc_circuit", "newtons_cooling", "nmr_relaxation"}
+        assert "expansion_analog" not in model_ids  # growth model excluded
+
+    def test_first_order_growth_matches_only_expansion_analog(self):
+        ir = _ir_for(1, {1: 1.0, 0: -4.0})  # growth equation: y' - 4y = 0
+        candidates = generate_candidates(ir, get_registry())
+        model_ids = {c.model_id for c in candidates}
+        assert model_ids == {"expansion_analog"}
+        analog = candidates[0]
+        assert analog.parameter_values["H"] == pytest.approx(4.0)
 
     def test_newtons_cooling_solves_directly_no_anchoring(self):
         ir = _ir_for(1, {1: 1.0, 0: 4.0})
@@ -87,7 +96,7 @@ class TestGenerateCandidates:
         forcing = {"type": "sin", "params": {"amplitude": 1.0, "frequency": 1.0, "phase": 0.0}, "expr": None}
         ir = _ir_for(2, {2: 1.0, 1: 2.0, 0: 5.0}, forcing=forcing)
         candidates = generate_candidates(ir, get_registry())
-        assert {c.model_id for c in candidates} == {"mass_spring_damper", "series_rlc", "torsional_pendulum"}
+        assert {c.model_id for c in candidates} == {"mass_spring_damper", "series_rlc", "torsional_pendulum", "mirror_ringdown", "optical_trap_oscillator"}
 
     def test_candidate_ids_are_unique(self):
         ir = _ir_for(2, {2: 1.0, 1: 2.0, 0: 5.0})

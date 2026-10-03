@@ -230,6 +230,124 @@ await test("the surprise button sends a seeded_random config", async () => {
 });
 
 // -------------------------------------------------------------------------
+// Theme state wiring (Phase 03)
+// -------------------------------------------------------------------------
+
+await test("clicking theme tabs updates body dataset and ARIA state", async () => {
+  const { document } = await bootApp();
+  const godModeTab = document.querySelector('.nav-link[data-theme-tab="celestial"]');
+  godModeTab.dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  assert.equal(document.body.dataset.theme, "celestial");
+  assert.equal(godModeTab.getAttribute("aria-selected"), "true");
+  assert.equal(document.querySelector('.nav-link[data-theme-tab="classical"]').getAttribute("aria-selected"), "false");
+});
+
+await test("compiling in classical mode sends no theme config", async () => {
+  const { document, calls } = await bootApp();
+  document.getElementById("equation-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await sleep(20);
+  const compileCall = calls.find((c) => c.url === "/api/compile");
+  const body = JSON.parse(compileCall.options.body);
+  assert.ok(!("theme" in body.config), "classical request should omit the theme key entirely");
+});
+
+await test("compiling in a fun mode sends that theme config", async () => {
+  const { document, calls } = await bootApp();
+  document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  document.getElementById("equation-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await sleep(20);
+  const compileCall = calls.find((c) => c.url === "/api/compile");
+  const body = JSON.parse(compileCall.options.body);
+  assert.equal(body.config.theme, "celestial");
+});
+
+await test("switching themes swaps the text-mode example chips", async () => {
+  const { document } = await bootApp();
+  document.querySelector('.mode-tab[data-mode="text"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  const initialChips = document.querySelectorAll(".example-chip").length;
+  assert.equal(initialChips, 4); // 4 classical examples
+
+  document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  const celestialChips = document.querySelectorAll(".example-chip").length;
+  assert.equal(celestialChips, 2); // 2 celestial examples
+
+  document.querySelector('.nav-link[data-theme-tab="classical"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  assert.equal(document.querySelectorAll(".example-chip").length, 4);
+});
+
+await test("switching input mode and theme are independent", async () => {
+  const { document } = await bootApp();
+  document.querySelector('.mode-tab[data-mode="text"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  
+  assert.equal(document.getElementById("text-mode-fields").hidden, false);
+  assert.equal(document.body.dataset.theme, "celestial");
+
+  document.querySelector('.mode-tab[data-mode="build"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  
+  assert.equal(document.getElementById("build-mode-fields").hidden, false);
+  assert.equal(document.body.dataset.theme, "celestial"); // Still celestial
+});
+
+// -------------------------------------------------------------------------
+// Visual effects (Phase 04)
+// -------------------------------------------------------------------------
+
+await test("buildStarfield and buildAtomicField are idempotent", async () => {
+  const { document } = await bootApp();
+  document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  const firstCount = document.getElementById("backdrop-celestial").children.length;
+  assert.ok(firstCount > 0);
+  
+  // click away and back
+  document.querySelector('.nav-link[data-theme-tab="classical"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  
+  const secondCount = document.getElementById("backdrop-celestial").children.length;
+  assert.equal(secondCount, firstCount); // Idempotent
+});
+
+await test("playRipple and playGlitchSqueeze clean up after themselves", async () => {
+  const { document } = await bootApp();
+  document.querySelector('.nav-link[data-theme-tab="quantum"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  assert.ok(document.documentElement.classList.contains("glitch-squeeze"));
+  // It cleans up after 650ms. We wait 750ms.
+  await sleep(750);
+  assert.ok(!document.documentElement.classList.contains("glitch-squeeze"));
+});
+
+await test("visual effects respect prefers-reduced-motion", async () => {
+  const { window, document } = await bootApp();
+  
+  // Override matchMedia in the specific jsdom window instance
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = (query) => ({ matches: query === "(prefers-reduced-motion: reduce)" });
+  
+  try {
+    document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+    await sleep(20);
+    // Theme should still change
+    assert.equal(document.body.dataset.theme, "celestial");
+    // But ripple should NOT be in the DOM
+    assert.ok(!document.querySelector(".mode-ripple"));
+  } finally {
+    window.matchMedia = originalMatchMedia;
+  }
+});
+
+// -------------------------------------------------------------------------
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

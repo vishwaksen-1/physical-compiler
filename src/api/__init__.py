@@ -48,7 +48,7 @@ from src.errors import analyze_candidate
 from src.api.experiment_output import ExperimentOutput
 
 COMPILER_VERSION = "0.3.0"  # Phase 3: real NLG rendering + error/safety modeling
-MODEL_DATABASE_VERSION = "0.1.0"  # bump when the physical_models registry composition changes
+MODEL_DATABASE_VERSION = "0.2.0"  # bump when the physical_models registry composition changes (0.2.0: +4 themed models)
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 _RANKING_POLICY_PATH = os.path.join(_REPO_ROOT, "data", "ranking_policy.yaml")
@@ -57,6 +57,42 @@ _RANKING_POLICY_PATH = os.path.join(_REPO_ROOT, "data", "ranking_policy.yaml")
 def _load_ranking_policy() -> dict:
     with open(_RANKING_POLICY_PATH, "r") as f:
         return yaml.safe_load(f)
+
+
+# ---------------------------------------------------------------------------
+# Theme filtering (God Mode / Antman Mode)
+# ---------------------------------------------------------------------------
+
+THEME_CELESTIAL = "celestial"  # God Mode
+THEME_QUANTUM = "quantum"      # Antman Mode
+
+
+def _themed_registry(theme) -> list:
+    """The subset of the registry a compile request may select from.
+
+    `config["theme"]` is an additive, optional key alongside the frozen
+    `candidate_selection_mode`/`candidate_seed` (config was never a closed
+    schema). Absent / None means classical: only models with
+    `theme is None`. A theme string selects exactly the models declaring
+    it. An unrecognized string matches nothing, which surfaces as the
+    ordinary graceful "no match" ExperimentOutput rather than an error, and
+    rather than silently falling back to classical (that would hide a typo).
+
+    Filtering happens here, at the call site, by choosing which list to pass
+    into generate_candidates() -- that function's signature and behavior
+    are frozen (INTERFACE_CONTRACTS.md §8), and it already takes the
+    registry as an explicit parameter. Without this filter, themed models
+    genuinely outscore classical ones on classical equations (e.g.
+    nmr_relaxation beats rc_circuit for y' + 4y = 0), so this is
+    load-bearing, not defensive.
+
+    /api/models deliberately stays unfiltered: it lists what exists, while
+    theming only restricts what /api/compile may select.
+    """
+    registry = get_registry()
+    if theme is None:
+        return [m for m in registry if m.theme is None]
+    return [m for m in registry if m.theme == theme]
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +227,12 @@ def compile_equation(raw_text, builder_state, config: dict) -> ExperimentOutput:
     ir = canonicalize(spec_dict)
     classify(ir)
 
-    registry = get_registry()
+    # Normalized before candidate generation: the theme decides which
+    # registry subset generate_candidates() gets to see.
+    config = dict(config or {})
+    theme = config.get("theme")
+
+    registry = _themed_registry(theme)
     candidates = generate_candidates(ir, registry)
 
     processed = []
@@ -201,7 +242,6 @@ def compile_equation(raw_text, builder_state, config: dict) -> ExperimentOutput:
         candidate = check_feasibility(candidate)
         processed.append(candidate)
 
-    config = dict(config or {})
     selection_mode = config.get("candidate_selection_mode", "deterministic_top_rank")
     seed = config.get("candidate_seed") if selection_mode == "seeded_random" else None
 
@@ -214,18 +254,28 @@ def compile_equation(raw_text, builder_state, config: dict) -> ExperimentOutput:
 
     warnings = []
     if not ranked:
-        warnings.append(
-            "No physical model in the registry currently matches this equation's shape "
-            "-- see PROJECT_PLAN.md Phase 3 for planned registry breadth."
-        )
+        if theme is None:
+            warnings.append(
+                "No physical model in the registry currently matches this equation's shape "
+                "-- see PROJECT_PLAN.md Phase 3 for planned registry breadth."
+            )
+        else:
+            warnings.append(
+                f"No physical model in the '{theme}' theme matches this equation's shape "
+                "-- try another theme, or adjust the coefficients toward that theme's physical scale."
+            )
     if selected:
         warnings.extend(a for a in selected.assumptions if a.startswith("feasibility:"))
         warnings.extend(analyze_candidate(selected_model, selected))
 
+    output_config = {"candidate_selection_mode": selection_mode, "candidate_seed": seed}
+    if theme is not None:
+        output_config["theme"] = theme  # additive; classical output keeps its exact old shape
+
     output = ExperimentOutput(
         compiler_version=COMPILER_VERSION,
         model_database_version=MODEL_DATABASE_VERSION,
-        config={"candidate_selection_mode": selection_mode, "candidate_seed": seed},
+        config=output_config,
         input_equation_spec=spec_dict,
         canonical_ir=ir,
         selected_candidate=selected,

@@ -67,7 +67,7 @@ DERIV_PDE.4: /\u2202\d*[A-Za-z_][A-Za-z_0-9]*\/\u2202[A-Za-z_][A-Za-z_0-9]*\d*/
 PRIME_DERIV.3: /[A-Za-z_][A-Za-z_0-9]*'+/
 
 NAME: /[A-Za-z_][A-Za-z_0-9]*/
-NUMBER: /\d+(\.\d+)?/
+NUMBER: /\d+(\.\d+)?([eE][+-]?\d+)?/
 
 %import common.WS
 %ignore WS

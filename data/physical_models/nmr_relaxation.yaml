@@ -1,0 +1,77 @@
+model_id: nmr_relaxation
+display_name: NMR Spin-Lattice Relaxation Apparatus
+domain: magnetic
+theme: quantum
+
+equation_class_tags:
+  - first_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - first_order_linear_constant_coefficient_ode
+
+state_variables:
+  Mz: longitudinal nuclear magnetization along the static field (A/m)
+
+parameter_map:
+  Gamma: spin-lattice relaxation rate, Gamma = 1/T1 (1/s)
+
+parameter_constraints:
+  Gamma:
+    min: 2.0
+    max: 100000.0
+    unit: 1/s
+    notes: >
+      T1 relaxation times from ~0.5 s (pure water) down to ~10 us (samples
+      doped with paramagnetic ions).
+
+dimensional_constraints:
+  Gamma: "[T]^-1"
+  Mz: "[I][L]^-1"
+  homogeneity_check: "Mz' + Gamma*Mz and Gamma*M_eq(t) must both reduce to A/(m*s)"
+
+measurable_variables:
+  - Mz
+  - T1
+
+controllable_variables:
+  - M_eq
+  - Mz0
+  - pulse_sequence
+
+construction_requirements:
+  components:
+    - benchtop educational NMR spectrometer (permanent magnet, ~0.5 T)
+    - RF transmitter/receiver coil with pulse programmer
+    - sample tubes with water doped with varying CuSO4 concentrations to tune T1
+    - inversion-recovery pulse sequence (180-tau-90) software
+  estimated_build_time_hours: 6
+  estimated_cost_usd: 6000
+  notes: >
+    Commercial benchtop teaching spectrometers sit around this price point;
+    this is not a casual weekend build. Inversion recovery flips Mz, then
+    samples it at increasing delays as it relaxes back toward M_eq, tracing
+    the first-order recovery curve directly. Doping concentration sweeps
+    Gamma across orders of magnitude.
+
+approximation_model:
+  type: linearization
+  assumptions:
+    - Bloch-equation description with a single exponential T1 (one spin species, no cross-relaxation)
+    - static field is uniform across the sample
+    - RF pulses are short compared with T1 (ideal, instantaneous flips)
+
+error_model:
+  sources:
+    - static-field inhomogeneity across the sample volume
+    - imperfect 180 and 90 degree pulse calibration
+    - multi-exponential relaxation in heterogeneous samples
+    - sample temperature drift changing T1 during a run
+  expected_relative_error_pct: 5.0
+
+safety_notes:
+  - strong permanent magnets -- keep pacemakers, credit cards, and loose steel tools well away
+  - copper sulfate is an irritant; wear gloves and goggles when preparing doped samples
+  - do not open the RF enclosure while the transmitter is pulsing
+
+alt_realizations_of: first_order_linear_constant_coefficient_ode

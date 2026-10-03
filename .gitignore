@@ -9,3 +9,4 @@ node_modules/
 public/
 .vercel
 .env*
+notes

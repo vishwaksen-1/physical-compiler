@@ -1,0 +1,101 @@
+model_id: optical_trap_oscillator
+display_name: Optically-Trapped Nanoparticle Oscillator
+domain: optomechanical
+theme: quantum
+
+equation_class_tags:
+  - second_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - second_order_linear_constant_coefficient_ode
+
+state_variables:
+  x: nanosphere displacement from the trap focus along one axis (m)
+  v: nanosphere velocity (m/s)
+
+parameter_map:
+  m: nanosphere mass (kg)
+  c: gas-damping coefficient from residual gas in the vacuum chamber (N*s/m)
+  k: optical trap stiffness near the focus (N/m)
+
+parameter_constraints:
+  m:
+    min: 1.0e-19
+    max: 1.0e-14
+    unit: kg
+    notes: >
+      Silica spheres from ~10 nm to ~1 um diameter (density ~2200 kg/m^3).
+  c:
+    min: 1.0e-16
+    max: 1.0e-9
+    unit: N*s/m
+    notes: >
+      Set by chamber pressure. Spans high vacuum (very low damping, very
+      high Q) up to near-atmospheric gas damping.
+  k:
+    min: 1.0e-9
+    max: 1.0e-4
+    unit: N/m
+    notes: >
+      Set by laser power and focusing (numerical aperture); stiffer traps
+      need more power and a tighter focus.
+
+dimensional_constraints:
+  m: "[M]"
+  c: "[M][T]^-1"
+  k: "[M][T]^-2"
+  x: "[L]"
+  v: "[L][T]^-1"
+  F: "[M][L][T]^-2"
+  homogeneity_check: "m*x'' + c*x' + k*x and F(t) must both reduce to [M][L][T]^-2"
+
+measurable_variables:
+  - x
+  - v
+  - power_spectral_density
+
+controllable_variables:
+  - F
+  - laser_power
+  - chamber_pressure
+
+construction_requirements:
+  components:
+    - single-mode laser (~1064 nm, 100 mW-1 W) and a high-NA aspheric or objective lens for the trap
+    - vacuum chamber with feedthroughs, roughing pump, and pressure gauge
+    - silica nanospheres plus a nebulizer to load them into the trap
+    - quadrant photodiode (or split detection) on the forward-scattered light
+    - electrodes or a modulated laser for the F(t) drive
+    - fast data acquisition (MHz sampling) and spectrum analysis
+  estimated_build_time_hours: 20
+  estimated_cost_usd: 8000
+  notes: >
+    A real levitated-optomechanics platform, not a weekend build. Near the
+    focus the optical potential is close to harmonic, so the particle behaves
+    as a damped harmonic oscillator whose damping you control with chamber
+    pressure.
+
+approximation_model:
+  type: linearization
+  assumptions:
+    - particle stays close to the focus, where the trap potential is harmonic
+    - motion along the measured axis decouples from the other two trap axes
+    - gas damping is viscous (linear in velocity) at the operating pressure
+    - photon recoil and thermal (Brownian) forcing are folded into F(t)
+
+error_model:
+  sources:
+    - trap anharmonicity at large amplitudes (Duffing-type nonlinearity)
+    - laser power and pointing noise modulating k
+    - cross-axis coupling between the three trap modes
+    - Brownian forcing that is stochastic rather than a clean drive
+  expected_relative_error_pct: 10.0
+
+safety_notes:
+  - class 4 laser -- use interlocked enclosures and wavelength-rated safety goggles at all times
+  - vacuum chambers store energy; use rated viewports and never over-tighten flanges
+  - nanoparticle powders are an inhalation hazard; load them in a fume hood with a respirator
+  - the IR beam is invisible; use an IR viewer card for alignment, never your eye
+
+alt_realizations_of: second_order_linear_constant_coefficient_ode

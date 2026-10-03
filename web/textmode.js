@@ -16,12 +16,22 @@
 
 import { typesetSpec } from "./typeset.js";
 
-const EXAMPLES = [
-  "x'' + 2*x' + 5*x = 0",
-  "x'' + 2*x' + 5*x = sin(t)",
-  "x' + 4*x = 0",
-  "d2x/dt2 + 2*dx/dt + 5*x = 0",
-];
+const EXAMPLES_BY_THEME = {
+  classical: [
+    "x'' + 2*x' + 5*x = 0",
+    "x'' + 2*x' + 5*x = sin(t)",
+    "x' + 4*x = 0",
+    "d2x/dt2 + 2*dx/dt + 5*x = 0",
+  ],
+  celestial: [
+    "x'' + 0.05*x' + 100*x = 0",
+    "x' - 2*x = 0",
+  ],
+  quantum: [
+    "x'' + 100*x' + 1e9*x = 0",
+    "x' + 5e3*x = 0",
+  ],
+};
 
 const DEBOUNCE_MS = 450;
 
@@ -37,14 +47,22 @@ export class TextMode {
     this.active = false;
     this.lastSpec = null;
     this.timer = null;
+    this.exampleTheme = "classical";
 
     this.renderExamples();
     this.textarea.addEventListener("input", () => this.scheduleParse());
   }
 
+  setExampleTheme(theme) {
+    if (theme === this.exampleTheme) return;
+    this.exampleTheme = theme in EXAMPLES_BY_THEME ? theme : "classical";
+    this.renderExamples();
+  }
+
   renderExamples() {
     this.chipsRoot.textContent = "";
-    for (const example of EXAMPLES) {
+    const examples = EXAMPLES_BY_THEME[this.exampleTheme];
+    for (const example of examples) {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "example-chip";

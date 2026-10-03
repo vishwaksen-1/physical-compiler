@@ -1,0 +1,105 @@
+model_id: mirror_ringdown
+display_name: Suspended-Mirror Ringdown Analog
+domain: mechanical
+theme: celestial
+
+equation_class_tags:
+  - second_order
+  - linear
+  - constant_coefficient
+  - ODE
+  - second_order_linear_constant_coefficient_ode
+
+state_variables:
+  x: mirror displacement from its rest position along the laser axis (m)
+  v: mirror velocity (m/s)
+
+parameter_map:
+  m: suspended mirror mass (kg)
+  c: residual damping coefficient, mostly air drag on the mirror (N*s/m)
+  k: effective suspension stiffness, pendulum restoring force plus wire elasticity (N/m)
+
+parameter_constraints:
+  m:
+    min: 0.001
+    max: 0.5
+    unit: kg
+    notes: >
+      A 1 g first-surface mirror chip up to a 500 g fused-silica optic --
+      the same family of test mass a gravitational-wave detector suspends,
+      just far smaller.
+  c:
+    min: 0.000001
+    max: 0.01
+    unit: N*s/m
+    notes: >
+      Real detector test masses target extremely high Q in vacuum. A hobby
+      build in air sits near the top of this range, dominated by residual
+      air damping.
+  k:
+    min: 0.01
+    max: 50.0
+    unit: N/m
+    notes: >
+      Soft enough for a low, slow resonance (sub-hertz to a few hertz) that
+      a photodiode can follow easily.
+
+dimensional_constraints:
+  m: "[M]"
+  c: "[M][T]^-1"
+  k: "[M][T]^-2"
+  x: "[L]"
+  v: "[L][T]^-1"
+  F: "[M][L][T]^-2"
+  homogeneity_check: "m*x'' + c*x' + k*x and F(t) must both reduce to [M][L][T]^-2"
+
+measurable_variables:
+  - x
+  - v
+  - ringdown_time
+
+controllable_variables:
+  - F
+  - x0
+  - v0
+
+construction_requirements:
+  components:
+    - small first-surface mirror (1-500 g) on a fine-wire or soft-spring suspension
+    - rigid frame with an isolation stage (sorbothane pads or a sand box)
+    - low-power laser diode (class 2, <1 mW) aimed at the mirror
+    - optical-lever readout -- split or quadrant photodiode a known distance away
+    - piezo actuator or voice coil to deliver small test "kicks" (the F(t) input)
+    - data logger or oscilloscope sampling the photodiode signal
+  estimated_build_time_hours: 8
+  estimated_cost_usd: 250
+  notes: >
+    This is a tabletop analog, not a gravitational-wave detector. It obeys
+    the same governing equation a detector's suspended test mass follows
+    after it is disturbed. The optical lever magnifies tiny angular motion
+    into a large spot movement on the photodiode, so nanometre-scale
+    ringdowns are readable without an interferometer.
+
+approximation_model:
+  type: linearization
+  assumptions:
+    - small-angle pendulum motion, so the suspension's restoring force is linear in x
+    - damping is linear in velocity (viscous air drag, no stick-slip at the suspension point)
+    - mirror moves as a rigid body along a single axis (other pendulum modes are ignored)
+    - optical-lever readout is linear over the spot's travel on the photodiode
+
+error_model:
+  sources:
+    - seismic and acoustic noise coupling into the suspension point
+    - air currents adding non-viscous, random forcing
+    - cross-coupling from pitch/yaw modes into the measured displacement
+    - photodiode nonlinearity near the edges of its active area
+  expected_relative_error_pct: 8.0
+
+safety_notes:
+  - never look into the laser beam or its specular reflection off the mirror; keep the beam below eye level
+  - use a class 2 (<1 mW) laser; block stray reflections with matte black card
+  - handle optics by the edges with gloves -- fingerprints degrade the coating and the readout
+  - fine suspension wire under tension can snap; wear eye protection while tensioning it
+
+alt_realizations_of: second_order_linear_constant_coefficient_ode

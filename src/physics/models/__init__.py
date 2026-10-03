@@ -26,6 +26,15 @@ from . import torsional_pendulum  # noqa: F401  (3) mechanical rotational, alt r
 from . import rc_circuit  # noqa: F401          (4) electrical, 1st-order linear ODE
 from . import newtons_cooling  # noqa: F401     (5) thermal, alt realization of (4)
 
+# --- Themed "fun mode" models (theme != None) ---
+# Deliberately registered AFTER the classical five: rank_candidates()
+# tie-breaks by insertion order, so even if src/api's theme filtering were
+# ever bypassed, a themed model could never win a tie against a classical one.
+from . import mirror_ringdown  # noqa: F401          (6) celestial / God Mode, 2nd order
+from . import expansion_analog  # noqa: F401         (7) celestial / God Mode, 1st order (growth)
+from . import optical_trap_oscillator  # noqa: F401  (8) quantum / Antman Mode, 2nd order
+from . import nmr_relaxation  # noqa: F401           (9) quantum / Antman Mode, 1st order
+
 __all__ = [
     "PhysicalModel",
     "register_model",

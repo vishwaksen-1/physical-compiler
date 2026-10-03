@@ -169,7 +169,9 @@ class TestHttpLayer:
         r = client.get("/api/models")
         assert r.status_code == 200
         ids = {m["model_id"] for m in r.json()["models"]}
-        assert ids == {"mass_spring_damper", "series_rlc", "torsional_pendulum", "rc_circuit", "newtons_cooling"}
+        assert len(ids) == 9
+        assert "mass_spring_damper" in ids
+        assert "optical_trap_oscillator" in ids
 
     def test_parse(self, client):
         r = client.post("/api/parse", json={"raw_text": "y'' + 2y' + 5y = 0"})

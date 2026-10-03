@@ -31,7 +31,22 @@ current state).
 - `pytest.ini` + `tests/conftest.py` — pins `PYTHONHASHSEED=0` for
   deterministic test runs (see the conftest docstring for why).
 
-## Running the smoke test locally
+## Local CLI
+
+You can compile equations directly from the terminal without running the web server using `cli/physcompile.py`:
+
+```bash
+# Classical theme (default)
+python3 cli/physcompile.py "y'' + 2y' + 5y = 0"
+
+# Celestial theme (God Mode)
+python3 cli/physcompile.py "y'' + 0.05y' + 100y = 0" --theme celestial
+
+# Quantum theme (Antman Mode)
+python3 cli/physcompile.py "y'' + 100y' + 1e9y = 0" --theme quantum
+```
+
+## Running the web server locally
 
 ```bash
 pip install -r requirements.txt

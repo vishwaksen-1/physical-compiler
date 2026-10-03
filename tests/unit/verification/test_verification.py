@@ -75,3 +75,12 @@ class TestVerifyMapping:
         ir = _ir_for(2, {2: 1.0, 1: 2.0, 0: 5.0})
         result = verify_mapping(ir, candidate)
         assert result.verification_status == "FAILED"
+
+    def test_extreme_scales_verify_correctly_using_relative_deviation(self):
+        ir = _ir_for(1, {1: 1e20, 0: 2e20})
+        candidate = CandidateMapping(
+            candidate_id="x", model_id="rc_circuit",
+            parameter_values={"R": 1.0, "C": 0.5 + 1e-15}
+        )
+        result = verify_mapping(ir, candidate)
+        assert result.verification_status == "EXACT"
