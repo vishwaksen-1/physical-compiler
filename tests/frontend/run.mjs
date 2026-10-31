@@ -328,6 +328,30 @@ await test("playRipple and playGlitchSqueeze clean up after themselves", async (
   assert.ok(!document.documentElement.classList.contains("glitch-squeeze"));
 });
 
+await test("switching theme resets compiler output to empty state", async () => {
+  const { document } = await bootApp();
+  // Compile in classical mode first
+  document.getElementById("equation-form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await sleep(20);
+  assert.ok(document.querySelector(".apparatus"), "should show compiled apparatus card");
+
+  // Switch theme to celestial (God Mode)
+  document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  assert.ok(!document.querySelector(".apparatus"), "apparatus card should be reset");
+  assert.ok(document.querySelector(".empty-state"), "empty state should be restored");
+});
+
+await test("playRipple spawns 3 ripples and cleans up after completion", async () => {
+  const { document } = await bootApp();
+  document.querySelector('.nav-link[data-theme-tab="celestial"]').dispatchEvent(new window.Event("click", { bubbles: true }));
+  await sleep(20);
+  const ripples = document.querySelectorAll(".mode-ripple");
+  assert.equal(ripples.length, 3, "should spawn 3 ripples for God Mode transition");
+  await sleep(2100);
+  assert.equal(document.querySelectorAll(".mode-ripple").length, 0, "all ripples should clean up");
+});
+
 await test("visual effects respect prefers-reduced-motion", async () => {
   const { window, document } = await bootApp();
   

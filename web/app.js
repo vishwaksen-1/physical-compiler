@@ -94,9 +94,21 @@ function clearPreview() {
   traceCaption.textContent = "";
 }
 
+const DEFAULT_EMPTY_STATE = `
+  <div class="empty-state" id="empty-state">
+    <svg class="empty-mark" viewBox="0 0 120 80" aria-hidden="true">
+      <path d="M8 40 Q 30 8, 52 40 T 96 40" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".5"/>
+      <circle cx="112" cy="40" r="3" fill="currentColor" opacity=".5"/>
+    </svg>
+    <p>The curve above is computed in your browser from the coefficients on the left.
+       Compile to find out which real apparatus obeys the same equation.</p>
+  </div>
+`;
+
 function clearResults() {
-  resultsRoot.innerHTML = "";
+  resultsRoot.innerHTML = DEFAULT_EMPTY_STATE;
   seedNote.hidden = true;
+  seedNote.textContent = "";
 }
 
 /* ------------------------------------------------------------------- modes */
@@ -141,8 +153,6 @@ function setTheme(next, originEvent) {
     playRipple(originEvent);
   } else if (theme === "quantum") {
     buildAtomicField(backdropQuantum);
-    playGlitchSqueeze();
-  } else if (previous === "quantum") {
     playGlitchSqueeze();
   }
 
